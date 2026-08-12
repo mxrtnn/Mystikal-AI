@@ -1,0 +1,1 @@
+``` # Python .venv/ __pycache__/ *.pyc # Node / React node_modules/ dist/ build/ # Variables de entorno (claves, contraseñas) .env # Modelos de IA (nunca al repo) *.pt *.pth *.ckpt *.safetensors # Sistema .DS_Store ```
