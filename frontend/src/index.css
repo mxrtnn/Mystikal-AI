@@ -109,3 +109,12 @@ input {
     "GRAD" 0,
     "opsz" 24;
 }
+
+/* Patrón de fondo tipo "Blueprint" sutil para el Home */
+.bg-blueprint {
+  background-color: #091122;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px; /* Tamaño de los cuadros */
+}

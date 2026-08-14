@@ -4,7 +4,7 @@ function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#091122] text-white">
+    <div className="min-h-screen bg-blueprint text-white">
       
       {/* NAVBAR */}
       <header className="border-b border-white/10 bg-[#091122]">
