@@ -14,7 +14,7 @@ function Home() {
             onClick={() => navigate('/')}
             className="text-2xl font-bold text-[#d0bcff]"
           >
-            ✦ Lumina AI
+            ✦ Mystikal-AI
           </button>
 
           <nav className="flex items-center gap-8">
