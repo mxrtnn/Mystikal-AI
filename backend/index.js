@@ -1,14 +1,15 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
-require('dotenv').config(); // Esto es vital para que lea tu archivo .env
+require('dotenv').config(); // Lee el archivo .env
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Crear la conexión a MySQL (TiDB Cloud)
-const db = mysql.createConnection({
+// Crear un pool de conexiones a MySQL (TiDB Cloud)
+// El pool reconecta automáticamente si la conexión se interrumpe o queda inactiva
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
@@ -16,17 +17,26 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME,
   ssl: {
     minVersion: 'TLSv1.2',
-    rejectUnauthorized: true
+    rejectUnauthorized: false
+  },
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
+// Probar la conexión al arrancar
+db.getConnection((err, connection) => {
+  if (err) {
+    console.error('❌ Error conectando a MySQL:', err.message);
+  } else {
+    console.log('✅ Conectado exitosamente a la base de datos MySQL (TiDB)');
+    connection.release(); // Liberamos la conexión de prueba para que vuelva al pool
   }
 });
 
-// Conectar a la base de datos
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Error conectando a MySQL:', err.message);
-    return;
-  }
-  console.log('✅ Conectado exitosamente a la base de datos MySQL (TiDB)');
+// Ruta simple para verificar que el servidor está vivo desde un navegador
+app.get('/', (req, res) => {
+  res.send('Backend de Mystikal-AI funcionando correctamente');
 });
 
 // Iniciar el servidor
