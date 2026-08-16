@@ -5,16 +5,16 @@ import Generate from './pages/Generate';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import MyImages from './pages/MyImages'; // Asumiendo que crearás este después
+import MyImages from './pages/MyImages';
 
-// Componente para proteger rutas
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {  // TODO: Aquí luego leeremos si hay un token válido de tu backend/MySQL
-const isAuthenticated = false; // CÁMBIALO A 'true' PARA PROBAR ENTRAR AL GENERADOR
+// Verifica si existe sesión guardada en localStorage
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const user = localStorage.getItem('user');
   
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
-  return children;
+  return <>{children}</>;
 };
 
 function App() {
