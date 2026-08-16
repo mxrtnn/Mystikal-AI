@@ -1,14 +1,13 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
-require('dotenv').config(); // Lee el archivo .env
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Crear un pool de conexiones a MySQL (TiDB Cloud)
-// El pool reconecta automáticamente si la conexión se interrumpe o queda inactiva
+// Pool de conexiones a TiDB Cloud
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -24,22 +23,42 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// Probar la conexión al arrancar
+// Probar conexión al arrancar
 db.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Error conectando a MySQL:', err.message);
   } else {
     console.log('✅ Conectado exitosamente a la base de datos MySQL (TiDB)');
-    connection.release(); // Liberamos la conexión de prueba para que vuelva al pool
+    connection.release();
   }
 });
 
-// Ruta simple para verificar que el servidor está vivo desde un navegador
+// Ruta raíz de prueba
 app.get('/', (req, res) => {
   res.send('Backend de Mystikal-AI funcionando correctamente');
 });
 
-// Iniciar el servidor
+// Endpoint para guardar registros de usuarios
+app.post('/api/register', (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
+
+  const query = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
+
+  db.query(query, [name, email, password], (err, result) => {
+    if (err) {
+      console.error('❌ Error al guardar usuario:', err);
+      return res.status(500).json({ error: 'Error al registrar en la base de datos' });
+    }
+    console.log('👤 Usuario guardado con ID:', result.insertId);
+    res.status(201).json({ message: 'Usuario registrado con éxito', id: result.insertId });
+  });
+});
+
+// Iniciar servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
