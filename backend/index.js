@@ -4,6 +4,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+// Configuración de CORS habilitada para permitir solicitudes de Vercel
 app.use(cors());
 app.use(express.json());
 
@@ -55,6 +57,45 @@ app.post('/api/register', (req, res) => {
     }
     console.log('👤 Usuario guardado con ID:', result.insertId);
     res.status(201).json({ message: 'Usuario registrado con éxito', id: result.insertId });
+  });
+});
+
+// Endpoint para inicio de sesión de usuarios
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+  }
+
+  const query = 'SELECT * FROM users WHERE email = ?';
+
+  db.query(query, [email], (err, results) => {
+    if (err) {
+      console.error('❌ Error al buscar usuario:', err);
+      return res.status(500).json({ error: 'Error en el servidor al consultar credenciales' });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
+
+    const user = results[0];
+
+    // Verificación básica de contraseña
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
+
+    // Login exitoso: retornamos la información básica del usuario
+    res.status(200).json({
+      message: 'Inicio de sesión exitoso',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
   });
 });
 
