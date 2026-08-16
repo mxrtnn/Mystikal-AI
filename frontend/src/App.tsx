@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import Home from './pages/Home';
 import Generate from './pages/Generate';
 import Dashboard from './pages/Dashboard';
@@ -17,20 +18,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-function App() {
+// Envoltorio para aplicar la animación suave al cambiar de pantalla
+const PageWrapper = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.3, ease: 'easeInOut' }}
+  >
+    {children}
+  </motion.div>
+);
+
+// Componente para manejar la ubicación y animaciones de rutas
+function AnimatedRoutes() {
+  const location = useLocation();
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
+        <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+        <Route path="/register" element={<PageWrapper><Register /></PageWrapper>} />
         
         {/* RUTAS PROTEGIDAS */}
         <Route 
           path="/generate" 
           element={
             <ProtectedRoute>
-              <Generate />
+              <PageWrapper><Generate /></PageWrapper>
             </ProtectedRoute>
           } 
         />
@@ -38,7 +54,7 @@ function App() {
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <PageWrapper><Dashboard /></PageWrapper>
             </ProtectedRoute>
           } 
         />
@@ -46,13 +62,21 @@ function App() {
           path="/images" 
           element={
             <ProtectedRoute>
-              <MyImages />
+              <PageWrapper><MyImages /></PageWrapper>
             </ProtectedRoute>
           } 
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AnimatedRoutes />
     </BrowserRouter>
   );
 }
