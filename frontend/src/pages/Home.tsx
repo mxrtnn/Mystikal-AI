@@ -1,9 +1,19 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Zap, Palette, Infinity as InfinityIcon, ArrowRight, Image as ImageIcon } from 'lucide-react';
 
 function Home() {
   const navigate = useNavigate();
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
 
   return (
     <div className="relative min-h-screen bg-[#050914] text-white overflow-hidden select-none">
@@ -20,7 +30,7 @@ function Home() {
             onClick={() => navigate('/')}
             className="flex items-center gap-2 text-2xl font-black tracking-wide text-[#d0bcff]"
           >
-            <Sparkles className="w-6 h-6 text-[#4cd7f6]" />
+            <Sparkles className="w-6 h-6 text-[#4cd7f6] animate-pulse" />
             <span className="bg-gradient-to-r from-white via-[#d0bcff] to-[#4cd7f6] bg-clip-text text-transparent">
               Mystikal-AI
             </span>
@@ -64,25 +74,31 @@ function Home() {
         </div>
       </header>
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION CON SPOTLIGHT */}
       <main>
-        <section className="relative px-8 py-24 md:py-36">
+        <section 
+          onMouseMove={handleMouseMove}
+          className="relative min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-8 py-20 overflow-hidden"
+        >
 
-          {/* Orbes de neón en segundo plano */}
+          {/* ESFERA PÚRPURA Y CIAN EN ÓRBITA GIRATORIA */}
           <motion.div 
-            animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute left-1/4 top-10 h-96 w-96 rounded-full bg-[#d0bcff]/20 blur-[140px] pointer-events-none" 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-[#7c3aed]/30 via-[#d0bcff]/20 to-[#4cd7f6]/30 rounded-full blur-[130px] pointer-events-none" 
           />
 
-          <motion.div 
-            animate={{ scale: [1.2, 1, 1.2], opacity: [0.2, 0.5, 0.2] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute right-1/4 top-20 h-96 w-96 rounded-full bg-[#4cd7f6]/20 blur-[140px] pointer-events-none" 
+          {/* SPOTLIGHT REACTIVO AL MOUSE (EFECTO LINTERNA NEÓN) */}
+          <div 
+            className="pointer-events-none absolute inset-0 transition-opacity duration-300 z-0"
+            style={{
+              background: `radial-gradient(650px circle at ${mousePos.x}px ${mousePos.y}px, rgba(76, 215, 246, 0.18), rgba(208, 188, 255, 0.1) 40%, transparent 80%)`,
+            }}
           />
 
-          <div className="relative mx-auto max-w-5xl text-center z-10">
+          <div className="relative mx-auto max-w-6xl text-center z-10">
 
+            {/* BADGE */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -95,16 +111,19 @@ function Home() {
               </span>
             </motion.div>
 
+            {/* TÍTULO GIGANTE DEGRADADO */}
             <motion.h1 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl font-black leading-tight md:text-8xl tracking-tight"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight uppercase leading-none font-sans"
             >
-              Turn Imagination
+              <span className="bg-gradient-to-r from-gray-500 via-gray-200 to-gray-500 bg-clip-text text-transparent hover:from-[#4cd7f6] hover:via-[#d0bcff] hover:to-[#4cd7f6] transition-all duration-700">
+                Turn Imagination
+              </span>
               <br />
-              <span className="bg-gradient-to-r from-white via-gray-200 to-[#d0bcff] bg-clip-text text-transparent">
-                into Digital Art
+              <span className="bg-gradient-to-r from-[#d0bcff] via-[#4cd7f6] to-[#d0bcff] bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(76,215,246,0.3)]">
+                Into Digital Art
               </span>
             </motion.h1>
 
@@ -117,6 +136,7 @@ function Home() {
               Experience the next generation of creative freedom. Harness the power of advanced neural networks to generate breathtaking imagery in seconds.
             </motion.p>
 
+            {/* BOTONES */}
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
