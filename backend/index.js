@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Inicializar Replicate con la API Token de tu .env
+// Inicializar cliente de Replicate
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
@@ -30,7 +30,7 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// Probar conexión a la Base de Datos
+// Verificación de conexión a la Base de Datos
 db.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Error conectando a MySQL:', err.message);
@@ -40,9 +40,9 @@ db.getConnection((err, connection) => {
   }
 });
 
-// Ruta de prueba
+// Ruta raíz de prueba
 app.get('/', (req, res) => {
-  res.send('Backend de Mystikal-AI (Replicate Enabled) funcionando correctamente');
+  res.send('Backend de Mystikal-AI (Uncensored Enabled) funcionando correctamente');
 });
 
 // Endpoint de Registro
@@ -93,17 +93,17 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Mapeo de modificadores para cada estilo visual
+// Mapeo de estilos optimizados para renderizado detallado
 const STYLE_PROMPTS = {
   'Photoreal': 'photorealistic 8k RAW photo, ultra detailed, cinematic lighting',
-  'Anime': 'anime style, masterpiece, vibrant colors, studio quality artwork, detailed lines',
+  'Anime': 'pixai style anime portrait, masterpiece, gacha game illustration, vibrant colors, detailed lineart',
   '3D Render': 'octane render 3d, unreal engine 5, ray tracing lighting, hyper-realistic 3d model',
   'Retro': '90s retro synthwave, neon glow, nostalgic aesthetic, vintage film style',
   'Cyberpunk': 'cyberpunk aesthetic, glowing neon lights, futuristic dark city background, high tech detail',
   'Concept Art': 'digital art concept painting, trending on artstation, sharp focus, atmospheric fantasy illustration'
 };
 
-// Endpoint para generar imágenes reales mediante Replicate
+// Endpoint principal de generación sin moderación ni filtros
 app.post('/api/generate', async (req, res) => {
   const { prompt, style, aspectRatio } = req.body;
 
@@ -111,7 +111,6 @@ app.post('/api/generate', async (req, res) => {
     return res.status(400).json({ error: 'El prompt es obligatorio' });
   }
 
-  // Mapeo de Aspect Ratio para modelos FLUX
   const ratioMap = {
     '1:1': '1:1',
     '16:9': '16:9',
@@ -120,41 +119,50 @@ app.post('/api/generate', async (req, res) => {
   };
 
   const selectedRatio = ratioMap[aspectRatio] || '16:9';
-  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS['Photoreal'];
+  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS['Anime'];
   const fullPrompt = `${prompt}, ${styleModifier}`;
 
   try {
     console.log(`🎨 Generando imagen en Replicate... Estilo: ${style} | Ratio: ${selectedRatio}`);
 
-    // Ejecución con el modelo FLUX Schnell (Ultra rápido y gratuito/barato)
+    // Modelo SDXL sin restricciones ni filtro de seguridad activo
     const output = await replicate.run(
-      "black-forest-labs/flux-schnell",
+      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
       {
         input: {
           prompt: fullPrompt,
           aspect_ratio: selectedRatio,
-          output_format: "webp",
-          output_quality: 90
+          disable_safety_checker: true,
+          guidance_scale: 7.5,
+          num_inference_steps: 30
         }
       }
     );
 
-    // Replicate devuelve los resultados (file object o array con URL)
+    console.log("📌 Salida recibida de Replicate:", output);
+
+    // Extracción limpia de la URL de la imagen
     let imageUrl = '';
-    if (Array.isArray(output)) {
-      imageUrl = output[0]?.url ? output[0].url() : String(output[0]);
-    } else if (output && typeof output.url === 'function') {
-      imageUrl = output.url();
-    } else {
-      imageUrl = String(output);
+    if (Array.isArray(output) && output.length > 0) {
+      const firstItem = output[0];
+      imageUrl = typeof firstItem === 'object' && firstItem.url 
+        ? (typeof firstItem.url === 'function' ? firstItem.url().toString() : String(firstItem.url))
+        : String(firstItem);
+    } else if (output) {
+      imageUrl = typeof output === 'object' && output.url 
+        ? (typeof output.url === 'function' ? output.url().toString() : String(output.url))
+        : String(output);
     }
 
-    console.log('✨ Imagen creada con éxito:', imageUrl);
+    console.log('✨ Imagen creada exitosamente:', imageUrl);
     res.json({ imageUrl });
 
   } catch (error) {
-    console.error('❌ Error llamando a Replicate:', error);
-    res.status(500).json({ error: 'Error al generar la imagen con IA' });
+    console.error('❌ Error en el procesamiento de Replicate:', error.message || error);
+    res.status(500).json({ 
+      error: 'Error al generar la imagen con IA', 
+      details: error.message || String(error)
+    });
   }
 });
 
