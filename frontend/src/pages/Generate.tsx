@@ -11,7 +11,7 @@ function Generate() {
   const styles = ['Photoreal', 'Anime', '3D Render', 'Retro', 'Cyberpunk', 'Concept Art'];
   const ratios = ['1:1', '16:9', '9:16', '4:3'];
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://mystikal-ai.onrender.com';
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
