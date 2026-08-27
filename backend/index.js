@@ -4,6 +4,11 @@ const cors = require('cors');
 const Replicate = require('replicate');
 require('dotenv').config();
 
+console.log(
+  '🔐 REPLICATE_API_TOKEN presente:',
+  !!process.env.REPLICATE_API_TOKEN
+);
+
 const app = express();
 
 app.use(cors());
@@ -60,8 +65,12 @@ app.post('/api/register', (req, res) => {
       console.error('❌ Error al guardar usuario:', err);
       return res.status(500).json({ error: 'Error al registrar en la base de datos' });
     }
+
     console.log('👤 Usuario guardado con ID:', result.insertId);
-    res.status(201).json({ message: 'Usuario registrado con éxito', id: result.insertId });
+    res.status(201).json({
+      message: 'Usuario registrado con éxito',
+      id: result.insertId
+    });
   });
 });
 
@@ -70,7 +79,9 @@ app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+    return res.status(400).json({
+      error: 'Email y contraseña son obligatorios'
+    });
   }
 
   const query = 'SELECT * FROM users WHERE email = ?';
@@ -78,17 +89,26 @@ app.post('/api/login', (req, res) => {
   db.query(query, [email], (err, results) => {
     if (err) {
       console.error('❌ Error al buscar usuario:', err);
-      return res.status(500).json({ error: 'Error en el servidor al consultar credenciales' });
+      return res.status(500).json({
+        error: 'Error en el servidor al consultar credenciales'
+      });
     }
 
     if (results.length === 0 || results[0].password !== password) {
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({
+        error: 'Usuario o contraseña incorrectos'
+      });
     }
 
     const user = results[0];
+
     res.status(200).json({
       message: 'Inicio de sesión exitoso',
-      user: { id: user.id, name: user.name, email: user.email }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
     });
   });
 });
@@ -103,12 +123,14 @@ const STYLE_PROMPTS = {
   'Concept Art': 'digital art concept painting, trending on artstation, sharp focus, atmospheric fantasy illustration'
 };
 
-// Endpoint principal de generación sin moderación ni filtros
+// Endpoint principal de generación
 app.post('/api/generate', async (req, res) => {
   const { prompt, style, aspectRatio } = req.body;
 
   if (!prompt) {
-    return res.status(400).json({ error: 'El prompt es obligatorio' });
+    return res.status(400).json({
+      error: 'El prompt es obligatorio'
+    });
   }
 
   const ratioMap = {
@@ -123,9 +145,11 @@ app.post('/api/generate', async (req, res) => {
   const fullPrompt = `${prompt}, ${styleModifier}`;
 
   try {
-    console.log(`🎨 Generando imagen en Replicate... Estilo: ${style} | Ratio: ${selectedRatio}`);
+    console.log(
+      `🎨 Generando imagen en Replicate... Estilo: ${style} | Ratio: ${selectedRatio}`
+    );
 
-    // Modelo SDXL sin restricciones ni filtro de seguridad activo
+    // Modelo SDXL
     const output = await replicate.run(
       "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
       {
@@ -143,30 +167,49 @@ app.post('/api/generate', async (req, res) => {
 
     // Extracción limpia de la URL de la imagen
     let imageUrl = '';
+
     if (Array.isArray(output) && output.length > 0) {
       const firstItem = output[0];
-      imageUrl = typeof firstItem === 'object' && firstItem.url 
-        ? (typeof firstItem.url === 'function' ? firstItem.url().toString() : String(firstItem.url))
+
+      imageUrl = typeof firstItem === 'object' && firstItem.url
+        ? (
+            typeof firstItem.url === 'function'
+              ? firstItem.url().toString()
+              : String(firstItem.url)
+          )
         : String(firstItem);
+
     } else if (output) {
-      imageUrl = typeof output === 'object' && output.url 
-        ? (typeof output.url === 'function' ? output.url().toString() : String(output.url))
+
+      imageUrl = typeof output === 'object' && output.url
+        ? (
+            typeof output.url === 'function'
+              ? output.url().toString()
+              : String(output.url)
+          )
         : String(output);
     }
 
     console.log('✨ Imagen creada exitosamente:', imageUrl);
+
     res.json({ imageUrl });
 
   } catch (error) {
-    console.error('❌ Error en el procesamiento de Replicate:', error.message || error);
-    res.status(500).json({ 
-      error: 'Error al generar la imagen con IA', 
+
+    console.error(
+      '❌ Error en el procesamiento de Replicate:',
+      error.message || error
+    );
+
+    res.status(500).json({
+      error: 'Error al generar la imagen con IA',
       details: error.message || String(error)
     });
   }
 });
 
 const PORT = process.env.PORT || 3001;
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
 });
