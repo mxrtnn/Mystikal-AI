@@ -14,12 +14,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Inicializar cliente de Replicate
+// =====================================================
+// REPLICATE
+// =====================================================
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Pool de conexiones a TiDB Cloud
+// =====================================================
+// BASE DE DATOS - TiDB CLOUD
+// =====================================================
+
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -35,46 +41,77 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-// Verificación de conexión a la Base de Datos
+// Verificación de conexión
 db.getConnection((err, connection) => {
   if (err) {
-    console.error('❌ Error conectando a MySQL:', err.message);
+    console.error(
+      '❌ Error conectando a MySQL:',
+      err.message
+    );
   } else {
-    console.log('✅ Conectado exitosamente a la base de datos MySQL (TiDB)');
+    console.log(
+      '✅ Conectado exitosamente a la base de datos MySQL (TiDB)'
+    );
     connection.release();
   }
 });
 
-// Ruta raíz de prueba
+// =====================================================
+// RUTA PRINCIPAL
+// =====================================================
+
 app.get('/', (req, res) => {
-  res.send('Backend de Mystikal-AI (Uncensored Enabled) funcionando correctamente');
+  res.send('Backend de Mystikal-AI funcionando correctamente');
 });
 
-// Endpoint de Registro
+// =====================================================
+// REGISTRO
+// =====================================================
+
 app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    return res.status(400).json({
+      error: 'Todos los campos son obligatorios'
+    });
   }
 
-  const query = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
+  const query =
+    'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
 
-  db.query(query, [name, email, password], (err, result) => {
-    if (err) {
-      console.error('❌ Error al guardar usuario:', err);
-      return res.status(500).json({ error: 'Error al registrar en la base de datos' });
+  db.query(
+    query,
+    [name, email, password],
+    (err, result) => {
+      if (err) {
+        console.error(
+          '❌ Error al guardar usuario:',
+          err
+        );
+
+        return res.status(500).json({
+          error: 'Error al registrar en la base de datos'
+        });
+      }
+
+      console.log(
+        '👤 Usuario guardado con ID:',
+        result.insertId
+      );
+
+      res.status(201).json({
+        message: 'Usuario registrado con éxito',
+        id: result.insertId
+      });
     }
-
-    console.log('👤 Usuario guardado con ID:', result.insertId);
-    res.status(201).json({
-      message: 'Usuario registrado con éxito',
-      id: result.insertId
-    });
-  });
+  );
 });
 
-// Endpoint de Login
+// =====================================================
+// LOGIN
+// =====================================================
+
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -84,132 +121,300 @@ app.post('/api/login', (req, res) => {
     });
   }
 
-  const query = 'SELECT * FROM users WHERE email = ?';
+  const query =
+    'SELECT * FROM users WHERE email = ?';
 
-  db.query(query, [email], (err, results) => {
-    if (err) {
-      console.error('❌ Error al buscar usuario:', err);
-      return res.status(500).json({
-        error: 'Error en el servidor al consultar credenciales'
-      });
-    }
+  db.query(
+    query,
+    [email],
+    (err, results) => {
+      if (err) {
+        console.error(
+          '❌ Error al buscar usuario:',
+          err
+        );
 
-    if (results.length === 0 || results[0].password !== password) {
-      return res.status(401).json({
-        error: 'Usuario o contraseña incorrectos'
-      });
-    }
-
-    const user = results[0];
-
-    res.status(200).json({
-      message: 'Inicio de sesión exitoso',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
+        return res.status(500).json({
+          error:
+            'Error en el servidor al consultar credenciales'
+        });
       }
-    });
-  });
+
+      if (
+        results.length === 0 ||
+        results[0].password !== password
+      ) {
+        return res.status(401).json({
+          error: 'Usuario o contraseña incorrectos'
+        });
+      }
+
+      const user = results[0];
+
+      res.status(200).json({
+        message: 'Inicio de sesión exitoso',
+
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      });
+    }
+  );
 });
 
-// Mapeo de estilos optimizados para renderizado detallado
+// =====================================================
+// ESTILOS
+// =====================================================
+
 const STYLE_PROMPTS = {
-  'Photoreal': 'photorealistic 8k RAW photo, ultra detailed, cinematic lighting',
-  'Anime': 'pixai style anime portrait, masterpiece, gacha game illustration, vibrant colors, detailed lineart',
-  '3D Render': 'octane render 3d, unreal engine 5, ray tracing lighting, hyper-realistic 3d model',
-  'Retro': '90s retro synthwave, neon glow, nostalgic aesthetic, vintage film style',
-  'Cyberpunk': 'cyberpunk aesthetic, glowing neon lights, futuristic dark city background, high tech detail',
-  'Concept Art': 'digital art concept painting, trending on artstation, sharp focus, atmospheric fantasy illustration'
+  'Photoreal':
+    'photorealistic 8k RAW photo, ultra detailed, cinematic lighting',
+
+  'Anime':
+    'pixai style anime portrait, masterpiece, gacha game illustration, vibrant colors, detailed lineart',
+
+  '3D Render':
+    'octane render 3d, unreal engine 5, ray tracing lighting, hyper-realistic 3d model',
+
+  'Retro':
+    '90s retro synthwave, neon glow, nostalgic aesthetic, vintage film style',
+
+  'Cyberpunk':
+    'cyberpunk aesthetic, glowing neon lights, futuristic dark city background, high tech detail',
+
+  'Concept Art':
+    'digital art concept painting, sharp focus, atmospheric fantasy illustration'
 };
 
-// Endpoint principal de generación
-app.post('/api/generate', async (req, res) => {
-  const { prompt, style, aspectRatio } = req.body;
+// =====================================================
+// GENERACIÓN DE IMÁGENES - FLUX 1.1 PRO
+// =====================================================
 
-  if (!prompt) {
+app.post('/api/generate', async (req, res) => {
+
+  const {
+    prompt,
+    style,
+    aspectRatio,
+    width,
+    height
+  } = req.body;
+
+  // ---------------------------------------------------
+  // Validación del prompt
+  // ---------------------------------------------------
+
+  if (!prompt || !prompt.trim()) {
     return res.status(400).json({
       error: 'El prompt es obligatorio'
     });
   }
 
+  // ---------------------------------------------------
+  // Ratios permitidos
+  // ---------------------------------------------------
+
   const ratioMap = {
     '1:1': '1:1',
     '16:9': '16:9',
     '9:16': '9:16',
-    '4:3': '4:3'
+    '4:3': '4:3',
+    'custom': 'custom'
   };
 
-  const selectedRatio = ratioMap[aspectRatio] || '16:9';
-  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS['Anime'];
-  const fullPrompt = `${prompt}, ${styleModifier}`;
+  const selectedRatio =
+    ratioMap[aspectRatio] || '16:9';
+
+  // ---------------------------------------------------
+  // Estilo
+  // ---------------------------------------------------
+
+  const styleModifier =
+    STYLE_PROMPTS[style] ||
+    STYLE_PROMPTS['Photoreal'];
+
+  const fullPrompt =
+    `${prompt.trim()}, ${styleModifier}`;
 
   try {
+
     console.log(
-      `🎨 Generando imagen en Replicate... Estilo: ${style} | Ratio: ${selectedRatio}`
+      `🎨 Generando con FLUX 1.1 Pro`
     );
 
-    // Modelo SDXL
+    console.log(
+      `📝 Prompt: ${fullPrompt}`
+    );
+
+    console.log(
+      `📐 Ratio: ${selectedRatio}`
+    );
+
+    // -------------------------------------------------
+    // INPUT BASE PARA FLUX
+    // -------------------------------------------------
+
+    const input = {
+      prompt: fullPrompt,
+      aspect_ratio: selectedRatio,
+      output_format: 'webp',
+      output_quality: 80,
+
+      // Mantiene los controles de seguridad
+      safety_tolerance: 2,
+
+      // Permite que FLUX optimice el prompt
+      prompt_upsampling: true
+    };
+
+    // -------------------------------------------------
+    // CUSTOM WIDTH / HEIGHT
+    // -------------------------------------------------
+
+    if (selectedRatio === 'custom') {
+
+      const customWidth = Number(width);
+      const customHeight = Number(height);
+
+      // Comprobar que sean números
+      if (
+        !Number.isInteger(customWidth) ||
+        !Number.isInteger(customHeight)
+      ) {
+        return res.status(400).json({
+          error:
+            'El ancho y el alto deben ser números enteros.'
+        });
+      }
+
+      // Límites de FLUX
+      if (
+        customWidth < 256 ||
+        customWidth > 1440 ||
+        customHeight < 256 ||
+        customHeight > 1440
+      ) {
+        return res.status(400).json({
+          error:
+            'Las dimensiones deben estar entre 256 y 1440 píxeles.'
+        });
+      }
+
+      // Múltiplos de 32
+      if (
+        customWidth % 32 !== 0 ||
+        customHeight % 32 !== 0
+      ) {
+        return res.status(400).json({
+          error:
+            'El ancho y el alto deben ser múltiplos de 32. Ejemplo: 1024 x 1536.'
+        });
+      }
+
+      input.width = customWidth;
+      input.height = customHeight;
+
+      console.log(
+        `📏 Dimensiones personalizadas: ${customWidth}x${customHeight}`
+      );
+    }
+
+    // -------------------------------------------------
+    // LLAMADA A FLUX 1.1 PRO
+    // -------------------------------------------------
+
+    console.log(
+      '📤 Enviando solicitud a Replicate...'
+    );
+
     const output = await replicate.run(
-      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+      'black-forest-labs/flux-1.1-pro',
       {
-        input: {
-          prompt: fullPrompt,
-          aspect_ratio: selectedRatio,
-          disable_safety_checker: true,
-          guidance_scale: 7.5,
-          num_inference_steps: 30
-        }
+        input
       }
     );
 
-    console.log("📌 Salida recibida de Replicate:", output);
+    console.log(
+      '📌 Salida recibida de Replicate:',
+      output
+    );
 
-    // Extracción limpia de la URL de la imagen
+    // -------------------------------------------------
+    // OBTENER URL DE LA IMAGEN
+    // -------------------------------------------------
+
     let imageUrl = '';
 
-    if (Array.isArray(output) && output.length > 0) {
-      const firstItem = output[0];
+    if (output) {
 
-      imageUrl = typeof firstItem === 'object' && firstItem.url
-        ? (
-            typeof firstItem.url === 'function'
-              ? firstItem.url().toString()
-              : String(firstItem.url)
-          )
-        : String(firstItem);
+      if (typeof output.url === 'function') {
 
-    } else if (output) {
+        imageUrl =
+          output.url().toString();
 
-      imageUrl = typeof output === 'object' && output.url
-        ? (
-            typeof output.url === 'function'
-              ? output.url().toString()
-              : String(output.url)
-          )
-        : String(output);
+      } else if (output.url) {
+
+        imageUrl =
+          String(output.url);
+
+      } else {
+
+        imageUrl =
+          String(output);
+      }
     }
 
-    console.log('✨ Imagen creada exitosamente:', imageUrl);
+    // -------------------------------------------------
+    // Comprobar que recibimos imagen
+    // -------------------------------------------------
 
-    res.json({ imageUrl });
+    if (!imageUrl) {
+      throw new Error(
+        'Replicate no devolvió una URL de imagen.'
+      );
+    }
+
+    console.log(
+      '✨ Imagen creada exitosamente:',
+      imageUrl
+    );
+
+    // -------------------------------------------------
+    // RESPUESTA AL FRONTEND
+    // -------------------------------------------------
+
+    res.json({
+      imageUrl
+    });
 
   } catch (error) {
 
     console.error(
-      '❌ Error en el procesamiento de Replicate:',
+      '❌ Error en Replicate:',
       error.message || error
     );
 
     res.status(500).json({
-      error: 'Error al generar la imagen con IA',
-      details: error.message || String(error)
+      error:
+        'Error al generar la imagen con IA',
+
+      details:
+        error.message || String(error)
     });
   }
 });
 
-const PORT = process.env.PORT || 3001;
+// =====================================================
+// SERVIDOR
+// =====================================================
+
+const PORT =
+  process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
+  console.log(
+    `🚀 Servidor de Mystikal-AI corriendo en el puerto ${PORT}`
+  );
 });
