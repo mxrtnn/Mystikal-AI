@@ -139,3 +139,8 @@ npm run build
 Las pruebas verifican invitado rechazado, GPU desconectada sin consumo de cuota, reserva concurrente única, bloqueo tras una imagen, acceso ampliado por ID, propiedad de imágenes, asignaciones, confirmación sin doble cobro de cuota, recuperación tras fallo y bloqueo compartido de GPU. La cuenta real del propietario no se utilizó para iniciar el conector durante la implementación; ese inicio requiere su contraseña local después de publicar Render. No se ha afirmado una prueba de extremo a extremo en producción antes de ese paso.
 
 La publicación oficial de WAI (modelo 827184) se consultó el 2026-11-11: v17.0 (versión 2883731) seguía siendo la última listada. No se descargaron checkpoints nuevos.
+
+
+## Animaciones de interfaz
+
+La navegación usa una salida/entrada breve con AnimatePresence, conservando la ubicación de cada página durante la transición. Al entrar se reinicia el scroll o se respeta el ancla solicitada. El home presenta título, texto, botones y portada de forma escalonada; las secciones inferiores aparecen una vez al entrar en pantalla. Las animaciones de entrada y navegación se omiten cuando el sistema solicita reducir movimiento. No se añadieron dependencias ni se modificaron la generación, cuentas o galerías.
