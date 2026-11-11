@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import LocalHome from './LocalHome';
-import LocalAccess from './pages/LocalAccess';
 import { IS_LOCAL_STUDIO } from './services/runtime';
 import LocalStudio from './LocalStudio';
 import Login from './pages/Login';
@@ -13,8 +12,9 @@ export default function App() {
     <Route path="/" element={<LocalHome />} />
     <Route path="/login" element={<Login />} />
     <Route path="/register" element={<Register />} />
-    <Route path="/generate" element={<ProtectedRoute>{IS_LOCAL_STUDIO ? <LocalStudio /> : <LocalAccess />}</ProtectedRoute>} />
-    <Route path="/images" element={<ProtectedRoute>{IS_LOCAL_STUDIO ? <LocalStudio /> : <LocalAccess />}</ProtectedRoute>} />
+    <Route path="/demo" element={<LocalStudio demo />} />
+    <Route path="/generate" element={<ProtectedRoute>{IS_LOCAL_STUDIO ? <LocalStudio /> : <LocalStudio demo />}</ProtectedRoute>} />
+    <Route path="/images" element={<ProtectedRoute>{IS_LOCAL_STUDIO ? <LocalStudio /> : <LocalStudio demo />}</ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute>{IS_LOCAL_STUDIO ? <Profile /> : <WebProfile />}</ProtectedRoute>} />
     <Route path="/dashboard" element={<ProtectedRoute><Navigate to="/profile" replace /></ProtectedRoute>} />
     <Route path="*" element={<Navigate to="/" replace />} />

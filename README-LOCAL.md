@@ -1,5 +1,17 @@
 # Mystikal AI local
 
+## Modo actual para portafolio
+
+- Vercel: `/demo` es una demo interactiva pública sin cuenta ni instalación. `/generate` y `/images`, después del login/invitado, abren el mismo estudio en modo demo.
+- Localhost: `/generate` conserva inferencia real, sesiones y archivos privados. `/demo` también permite revisar la demostración sin iniciar el backend.
+- El botón público dice **Cargar siguiente ejemplo**. No hay inferencia, colas, llamadas a proveedores ni progreso ficticio. Editar controles no cambia la imagen fija; cargar o restaurar un ejemplo recupera sus parámetros reales. **Descargar mi configuración** exporta un borrador JSON con `generated:false`.
+- Dos PNG SFW revisados y sus parámetros están en `frontend/public/demo`, con un catálogo explícito en `frontend/src/data/demo-examples.json`. Son resultados reales de Animagine XL 4.0 en la GPU del desarrollador, publicados para la demo. La imagen del home es un recurso promocional separado.
+- Los tiempos y VRAM mostrados son registros históricos de cada ejemplo, no mediciones del navegador ni una promesa de rendimiento. El ejemplo de jardín registró 283.15 s a 1024x1024/28 pasos. El paisaje nuevo registró 62.79 s en frío a 768x768/20 pasos, con 5196 MiB de pico asignado por PyTorch; su inferencia fue 24.25 s y el resto incluye carga/codificación.
+- La demo no lee carpetas privadas, no publica imágenes automáticamente ni guarda los prompts editados en un servidor. Solo contiene los dos ejemplos SFW elegidos expresamente.
+
+Pruebas desde `frontend`: `node scripts/check-demo.cjs`, `node scripts/check-demo-render.mjs`, `node scripts/check-session.cjs`, y `npm run build`. La prueba de render usa React en servidor con un entorno de navegador mínimo; no sustituye una revisión visual en navegador. En esta sesión la conexión del navegador al servidor de prueba quedó bloqueada, por lo que esa revisión visual sigue pendiente.
+
+
 Se conserva React/Vite y se integra Diffusers en el backend Python, evitando un servicio adicional ComfyUI y controlando directamente progreso y cancelación. El backend Node/Replicate y las pantallas anteriores se conservan como código histórico, pero el estudio local no los importa ni necesita cuenta, saldo o APIs comerciales.
 
 ## Iniciar en este equipo
@@ -139,7 +151,7 @@ El login y el modo invitado se mantienen en la versión pública; la GPU y los a
 - Backend original activo: https://mystikal-ai.onrender.com. El dominio mystikal-ai-backend.onrender.com devolvió 404 y se eliminó como fallback. También se corrigió el origen por defecto del puente de autenticación local Python.
 - En Vercel, /login muestra el formulario original y llama a /api/login. frontend/vercel.json reenvía esa ruta a https://mystikal-ai.onrender.com/api/login. /api/register se reenvía al registro del mismo servicio. Root Directory de Vercel debe ser frontend para cargar este vercel.json. No hace falta copiar las credenciales de TiDB a Vercel.
 - Invitado público funciona en el navegador sin llamar a /api/auth/guest ni necesitar Python. Iniciar sesión, cerrar sesión y /profile públicos conservan el flujo de navegación. El perfil web muestra la cuenta; no carga archivos privados del PC. El estado público guardado en el navegador solo controla la navegación pública: no es un token de autorización para APIs ni archivos privados.
-- /generate e /images públicos requieren cuenta o invitado y explican cómo abrir localhost. La generación sigue exclusivamente en la GPU local. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
+- /generate e /images públicos requieren cuenta o invitado y abren la demo SFW; /demo permite explorarla directamente sin cuenta. La generación nueva sigue exclusivamente en la GPU local. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
 - Registro local utiliza VITE_AUTH_API_URL si se configura, con https://mystikal-ai.onrender.com como valor por defecto. El backend Python usa MYSTIKAL_AUTH_URL con el mismo valor por defecto. Las variables VITE_API_URL antiguas no se usan para sustituir las rutas de login públicas.
 
 Validado: conexión local de solo lectura a TiDB con TLS y certificado verificado (SELECT 1), servicio original Render activo, validación de login sin campos (400) y consulta con una identidad de diagnóstico inexistente (401, sin crear cuentas ni usar credenciales del usuario). No se ha probado un login válido del usuario ni se ha publicado automáticamente la corrección.
