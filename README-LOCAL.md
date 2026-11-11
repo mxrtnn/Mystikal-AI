@@ -130,3 +130,13 @@ Validación adicional: generación REAL en GPU de prueba técnica 512x512, 1 pas
 ## Portada fija y diseño del home
 
 La portada usa frontend/public/images/mystikal-home-v1.png: una ilustración promocional SFW creada con la herramienta integrada image_gen. Es un recurso de diseño independiente de la galería, no una muestra de rendimiento de Animagine ni una imagen generada por la GPU local. La galería pública sigue limitada a contenido compartido, SFW y revisado. Se mantienen el título con iluminación al mouse y el flujo de login; se ajustaron tamaños de letra, espaciado, navegación, tarjetas y secciones técnicas.
+
+## Vercel: home público y generador en el PC
+
+El despliegue público es un escaparate estático. En localhost/127.0.0.1/::1 se habilitan el login, invitado, perfil y generador locales. En cualquier otro host, incluidas las URLs de producción y preview de Vercel, /login, /register, /generate, /images, /profile y /dashboard muestran una pantalla de acceso al estudio local. No se solicitan credenciales ni se hacen llamadas a la API local desde el home público. La galería privada no se carga en Vercel.
+
+El botón de esa pantalla navega a http://127.0.0.1:5173/generate en EL DISPOSITIVO del visitante; no realiza un fetch a localhost, ni se conecta a la GPU del desarrollador desde Internet. Si el estudio está apagado, el navegador no podrá abrir ese destino. Inicia primero Python y Vite con iniciar-local.ps1, uno en cada terminal.
+
+Vercel debe tener Root Directory = frontend, Build Command = npm run build y Output Directory = dist. frontend/vercel.json incluye rewrites de las rutas React hacia index.html para soportar enlaces directos y recargas. No hay rewrite de /api hacia un PC privado: el proxy de vite.config.ts es solo para desarrollo local. No configures las APIs antiguas de Render como si fueran el backend Python de generación.
+
+Tras publicar los cambios en GitHub, crea un nuevo despliegue o espera el despliegue automático de Vercel. Recargar una versión antigua de producción no instala esta corrección.

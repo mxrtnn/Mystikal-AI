@@ -3,17 +3,19 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, Cpu, Download, Image, Layers, Mail, Monitor, ShieldCheck, Sparkles, Terminal, WandSparkles, Zap } from 'lucide-react';
 import SessionControls from './components/SessionControls';
+import { IS_LOCAL_STUDIO } from './services/runtime';
 import './local.css';
 type Artwork = { id: string; prompt: string; steps: number; width: number; height: number };
 export default function LocalHome() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   useEffect(() => {
+    if (!IS_LOCAL_STUDIO) return;
     const controller = new AbortController();
     fetch('/api/public/gallery', { signal: controller.signal }).then(r => { if (!r.ok) throw new Error('gallery'); return r.json(); }).then(setArtworks).catch(() => {});
     return () => controller.abort();
   }, []);
   return <div id="top" className="studio home-page home-refined">
-    <header className="studio-header"><Link to="/" className="brand"><Sparkles size={23} /> Mystikal <span>AI</span></Link><nav className="site-nav" aria-label="Navegación principal"><a href="#como-funciona">Cómo funciona</a><a href="#tecnologia">Tecnología</a><SessionControls /><Link className="nav-cta" to="/generate">Abrir estudio <ArrowUpRight size={15} /></Link></nav></header>
+    <header className="studio-header"><Link to="/" className="brand"><Sparkles size={23} /> Mystikal <span>AI</span></Link><nav className="site-nav" aria-label="Navegación principal"><a href="#como-funciona">Cómo funciona</a><a href="#tecnologia">Tecnología</a><SessionControls /><Link className="nav-cta" to="/generate">{IS_LOCAL_STUDIO ? 'Abrir estudio' : 'Usar en mi PC'} <ArrowUpRight size={15} /></Link></nav></header>
     <main>
       <section className="home-hero">
         <div className="hero-copy"><span className="pill"><span className="status-dot" /> TU ESTUDIO DE ANIME LOCAL</span><h1 className="spotlight-title" onPointerMove={event => {
@@ -25,7 +27,7 @@ export default function LocalHome() {
         }} onPointerLeave={event => event.currentTarget.style.setProperty('--light-active', '0')}>
           <span className="title-line">Tu universo anime.</span><span className="title-line title-accent">Hecho en tu GPU.</span>
           <span className="title-glow" aria-hidden="true"><span className="title-line">Tu universo anime.</span><span className="title-line">Hecho en tu GPU.</span></span>
-        </h1><p>Un estudio personal de ilustración anime. Describe tu mundo, explora personajes y conserva cada creación en tu equipo.</p><div className="hero-actions"><Link className="primary-link" to="/generate"><WandSparkles size={18} /> Empezar a crear <ArrowRight size={18} /></Link><a className="text-link" href="#como-funciona">Descubre cómo funciona ↓</a></div><div className="hero-facts"><span><Cpu size={15} /> Generación local</span><span><ShieldCheck size={15} /> Sin créditos por imagen</span><span><Download size={15} /> Tus archivos, en tu PC</span></div></div>
+        </h1><p>Un estudio personal de ilustración anime. Describe tu mundo, explora personajes y conserva cada creación en tu equipo.</p><div className="hero-actions"><Link className="primary-link" to="/generate"><WandSparkles size={18} /> {IS_LOCAL_STUDIO ? 'Empezar a crear' : 'Abrir mi estudio local'} <ArrowRight size={18} /></Link><a className="text-link" href="#como-funciona">Descubre cómo funciona ↓</a></div><div className="hero-facts"><span><Cpu size={15} /> Generación local</span><span><ShieldCheck size={15} /> Sin créditos por imagen</span><span><Download size={15} /> Tus archivos, en tu PC</span></div></div>
         <div className="hero-art"><img src="/images/mystikal-home-v1.png" alt="Exploradora de cabello violeta en un balcón sobre una ciudad fantástica iluminada al atardecer" width={1120} height={1400} fetchPriority="high" /><div className="art-top-label"><span className="status-dot" /> ILUSTRACIÓN DE PORTADA</div><div className="art-caption"><span>UN UNIVERSO DE POSIBILIDADES</span><strong>Donde nacen tus mundos.</strong><span>Arte promocional creado para Mystikal · SFW</span></div></div>
       </section>
       <div className="tech-strip"><span>CONSTRUIDO CON</span><strong>React + TypeScript</strong><span>✦</span><strong>FastAPI</strong><span>✦</span><strong>PyTorch + CUDA</strong><span>✦</span><strong>Diffusers · SDXL</strong></div>
