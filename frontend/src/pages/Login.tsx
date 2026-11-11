@@ -1,28 +1,23 @@
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, Check } from 'lucide-react';
+import { Sparkles, Mail, Lock, Check, UserRound } from 'lucide-react';
+import LoginBackdrop from '../components/LoginBackdrop';
+import { continueAsGuest } from '../services/session';
 
 function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const requestedPath = location.state?.from;
+  const destination = ['/generate', '/images', '/dashboard', '/profile'].includes(requestedPath) ? requestedPath : '/generate';
+  const [email, setEmail] = useState(() => localStorage.getItem('remembered_email') || '');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('remembered_email')));
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Fallback directo a Render para evitar fallos de localhost en producción
-  const API_URL = import.meta.env.VITE_API_URL || 'https://mystikal-ai-backend.onrender.com';
-
-  // Cargar credenciales guardadas si el usuario activó "Recordarme" previamente
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('remembered_email');
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
+  // El backend local verifica la cuenta existente y emite una cookie privada.
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,10 +25,10 @@ function Login() {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/login`, {
+      const response = await fetch(`/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember: rememberMe }),
       });
 
       const data = await response.json();
@@ -41,6 +36,8 @@ function Login() {
       if (response.ok) {
         // Guardar sesión
         localStorage.setItem('user', JSON.stringify(data.user || { email }));
+        sessionStorage.removeItem('mystikal_guest');
+        localStorage.setItem('mystikal_session_changed',crypto.randomUUID());
 
         // Guardar o limpiar email recordado según el checkbox
         if (rememberMe) {
@@ -51,10 +48,10 @@ function Login() {
 
         setMessage({ type: 'success', text: '¡Sesión iniciada! Redirigiendo al generador...' });
         setTimeout(() => {
-          navigate('/generate');
+          navigate(destination, { replace: true });
         }, 1500);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Credenciales incorrectas.' });
+        setMessage({ type: 'error', text: data.detail || data.error || 'Credenciales incorrectas.' });
         setLoading(false);
       }
     } catch (error) {
@@ -67,6 +64,8 @@ function Login() {
   return (
     <div className="relative min-h-screen bg-[#050914] flex items-center justify-center p-4 overflow-hidden select-none">
       
+      <LoginBackdrop />
+
       {/* FONDO FUTURISTA: Rejilla Cibernética */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293d15_1px,transparent_1px),linear-gradient(to_bottom,#1f293d15_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
@@ -120,13 +119,13 @@ function Login() {
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Campo Email */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label htmlFor="login-email" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
               Correo Electrónico
             </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input 
-                type="email" 
+                type="email" id="login-email" autoComplete="username"
                 value={email}
                 disabled={loading}
                 onChange={(e) => setEmail(e.target.value)}
@@ -139,13 +138,13 @@ function Login() {
 
           {/* Campo Contraseña */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
               Contraseña
             </label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input 
-                type="password" 
+                type="password" id="login-password" autoComplete="current-password"
                 value={password}
                 disabled={loading}
                 onChange={(e) => setPassword(e.target.value)}
@@ -163,7 +162,7 @@ function Login() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="hidden"
+                className="sr-only"
               />
               <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${rememberMe ? 'bg-[#4cd7f6] border-[#4cd7f6] text-[#050914]' : 'border-white/20 bg-[#050914]'}`}>
                 {rememberMe && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -193,6 +192,15 @@ function Login() {
             )}
           </motion.button>
         </form>
+
+        <button
+          type="button"
+          disabled={loading}
+          onClick={async () => { setLoading(true); setMessage(null); try { await continueAsGuest(); navigate(destination, { replace: true }); } catch(error) { setMessage({type:'error',text:String(error)}); setLoading(false); } }}
+          className="w-full mt-4 py-3 rounded-xl border border-white/15 bg-white/[0.03] text-gray-300 text-sm font-medium hover:bg-white/[0.07] hover:border-[#4cd7f6]/40 hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <UserRound className="w-4 h-4" /> Continuar como invitado
+        </button>
 
         <p className="mt-8 text-center text-sm text-gray-400">
           ¿No tienes una cuenta?{' '}
