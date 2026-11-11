@@ -10,3 +10,10 @@ build/
 *.ckpt
 *.safetensors
 .DS_Store
+# Local inference and generated data
+.venv-local/
+backend/models/
+backend/outputs/
+.tools/
+*.log
+backend/data/
