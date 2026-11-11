@@ -10,7 +10,7 @@ const server=await createServer({root:frontendDirectory,server:{middlewareMode:t
 try{
  const {default:Studio}=await server.ssrLoadModule('/src/LocalStudio.tsx');
  const demo=renderToString(React.createElement(MemoryRouter,null,React.createElement(Studio,{demo:true})));
- assert.match(demo,/DEMO INTERACTIVA/);assert.match(demo,/Cargar siguiente ejemplo/);assert.match(demo,/Ciudad entre islas/);assert.match(demo,/Luz de jardín/);assert.match(demo,/Descargar mi configuración/);assert.doesNotMatch(demo,/No se pudo conectar/);
+ assert.match(demo,/DEMO INTERACTIVA/);assert.match(demo,/Cargar siguiente ejemplo/);assert.match(demo,/Ciudad entre islas/);assert.match(demo,/Luz de jardín/);assert.match(demo,/Descargar mi configuración/);assert.doesNotMatch(demo,/No se pudo conectar/);assert.match(demo,/WAI Illustrious SDXL v17/);assert.doesNotMatch(demo,/Pony Diffusion V6 XL/);assert.doesNotMatch(demo,/FLUX 1.1 Pro/);
  const local=renderToString(React.createElement(MemoryRouter,null,React.createElement(Studio)));
  assert.match(local,/Generar imagen/);assert.doesNotMatch(local,/DEMO INTERACTIVA/);
  console.log('PASS: React renderiza demo sin cuenta, dos ejemplos y exportación; modo local conserva generación.');

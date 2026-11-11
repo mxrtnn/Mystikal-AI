@@ -10,6 +10,15 @@ import privacy
 import main
 
 class PrivacyTests(unittest.TestCase):
+    def test_token_counter_owner_session_and_long_request_validation(self):
+        from types import SimpleNamespace
+        tokenizer=lambda text,**kwargs:SimpleNamespace(input_ids=text.split())
+        with patch.object(main,'load_tokenizers',return_value=(tokenizer,tokenizer)):
+            self.assertEqual(self.public.post('/api/prompt/tokens',json={'prompt':'test'}).status_code,401)
+            counted=self.a.post('/api/prompt/tokens',json={'prompt':'cat '*220,'negative_prompt':'blurry '*220}).json()
+            self.assertEqual(counted['positive'],220);self.assertEqual(counted['negative'],220)
+            too_long=self.a.post('/api/generate',json={'prompt':'cat '*221})
+            self.assertEqual(too_long.status_code,422);self.assertIn('221/220',too_long.json()['detail'])
     def test_account_email_change_preserves_gallery_identity(self):
         first=Mock(status_code=200);first.json.return_value={'user':{'id':123,'name':'Test','email':'old@example.invalid'}}
         second=Mock(status_code=200);second.json.return_value={'user':{'id':123,'name':'Test','email':'new@example.invalid','avatar':'moon'}}

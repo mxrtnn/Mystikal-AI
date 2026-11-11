@@ -1,201 +1,101 @@
-# Mystikal AI local
+# Mystikal AI: uso local
 
-## Modo actual para portafolio
+## Estado actual
 
-- Vercel: `/demo` es una demo interactiva pública sin cuenta ni instalación. `/generate` y `/images`, después del login/invitado, abren el mismo estudio en modo demo.
-- Localhost: `/generate` conserva inferencia real, sesiones y archivos privados. `/demo` también permite revisar la demostración sin iniciar el backend.
-- El botón público dice **Cargar siguiente ejemplo**. No hay inferencia, colas, llamadas a proveedores ni progreso ficticio. Editar controles no cambia la imagen fija; cargar o restaurar un ejemplo recupera sus parámetros reales. **Descargar mi configuración** exporta un borrador JSON con `generated:false`.
-- Dos PNG SFW revisados y sus parámetros están en `frontend/public/demo`, con un catálogo explícito en `frontend/src/data/demo-examples.json`. Son resultados reales de Animagine XL 4.0 en la GPU del desarrollador, publicados para la demo. La imagen del home es un recurso promocional separado.
-- Los tiempos y VRAM mostrados son registros históricos de cada ejemplo, no mediciones del navegador ni una promesa de rendimiento. El ejemplo de jardín registró 283.15 s a 1024x1024/28 pasos. El paisaje nuevo registró 62.79 s en frío a 768x768/20 pasos, con 5196 MiB de pico asignado por PyTorch; su inferencia fue 24.25 s y el resto incluye carga/codificación.
-- La demo no lee carpetas privadas, no publica imágenes automáticamente ni guarda los prompts editados en un servidor. Solo contiene los dos ejemplos SFW elegidos expresamente.
+- Modelos disponibles: Animagine XL 4.0 y WAI Illustrious SDXL v17.
+- Pony, su LoRA CSR y FLUX se retiraron por petición del usuario. Las imágenes antiguas se conservan; sus modelos ya no se pueden elegir ni ejecutar.
+- La generación usa descarga secuencial de submódulos y decodificación VAE por mosaicos de 512 px. Los codificadores de texto se descartan cuando sus embeddings ya están calculados. Esta configuración prioriza memoria y puede ser más lenta.
+- Cada solicitud de generación usa un proceso temporal aislado. Al terminar, cancelar o fallar, se cierra todo su árbol de procesos y se liberan sus asignaciones de RAM/VRAM. Un lote reutiliza el modelo únicamente entre las imágenes del mismo lote.
+- En Windows se aplica un Job Object sin nombre con límite de memoria comprometida para ese árbol: el menor valor entre 16 GiB y la mitad de la RAM física. No cambia la configuración global de memoria virtual.
+- El supervisor comprueba además RAM y disco cada 0.5 segundos. Requiere 12 GiB libres para comenzar; detiene la generación por debajo de 8 GiB libres, 3 GiB de RAM disponible o un crecimiento del pagefile superior a 4 GiB desde el inicio.
+- Esos límites protegen la solicitud de Mystikal; no controlan el consumo de otras aplicaciones ni fuerzan que Windows reduzca inmediatamente su pagefile.
 
-Pruebas desde `frontend`: `node scripts/check-demo.cjs`, `node scripts/check-demo-render.mjs`, `node scripts/check-session.cjs`, y `npm run build`. La prueba de render usa React en servidor con un entorno de navegador mínimo; no sustituye una revisión visual en navegador. En esta sesión la conexión del navegador al servidor de prueba quedó bloqueada, por lo que esa revisión visual sigue pendiente.
+## Iniciar desde VS Code
 
-
-Se conserva React/Vite y se integra Diffusers en el backend Python, evitando un servicio adicional ComfyUI y controlando directamente progreso y cancelación. El backend Node/Replicate y las pantallas anteriores se conservan como código histórico, pero el estudio local no los importa ni necesita cuenta, saldo o APIs comerciales.
-
-## Iniciar en este equipo
-
-Desde la raíz del proyecto, en dos terminales PowerShell:
+Desde la raíz del proyecto, deja abiertas dos terminales:
 
 ```powershell
 .\iniciar-local.ps1 backend
-# Segunda terminal:
+```
+
+```powershell
 .\iniciar-local.ps1 frontend
 ```
 
-Abre http://127.0.0.1:5173. Ctrl+C en ambas terminales detiene los servicios. Ambos escuchan en localhost; no uses múltiples workers porque duplican el modelo en memoria. El Node portátil de .tools evita cambiar la configuración global de nvm.
+Abre http://127.0.0.1:5173. Usa un único backend en el puerto 8000 y un único Vite en el 5173. Para aplicar cambios del backend, detén la terminal con Ctrl+C y vuelve a ejecutar el comando. No se arranca ningún servidor automáticamente al instalar modelos ni al ejecutar las pruebas.
 
-Alternativa si PowerShell bloquea scripts:
+El modelo se vuelve a cargar en cada nueva solicitud. Es más lento que conservarlo indefinidamente, a cambio de liberar los allocators de Python/PyTorch y el contexto CUDA al finalizar. Cancelar conserva las imágenes que ya se registraron y limpia solamente los archivos incompletos de esa tarea.
 
-```powershell
-backend\.venv-local\Scripts\python.exe -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --workers 1
-# En otra terminal, desde frontend:
-..\.tools\node-v22.16.0-win-x64\node.exe node_modules\vite\bin\vite.js --host 127.0.0.1
-```
+## Instalación y modelos
 
-## Reinstalar
-
-Windows, Python 3.13, Node >=22.12 y controlador NVIDIA compatible con CUDA 12.8. No hace falta CUDA Toolkit. Reserva 15 GB libres para modelo/dependencias, además de imágenes.
+La instalación existente usa backend/.venv-local, PyTorch cu128 y la GPU RTX 5060 Laptop de 8 GB. Las dependencias están fijadas en backend/requirements-local.txt. La configuración local no está diseñada para exponer el backend Python directamente a Internet.
 
 ```powershell
-python -m venv backend\.venv-local
-backend\.venv-local\Scripts\python.exe -m pip install -r backend\requirements-local.txt
 backend\.venv-local\Scripts\python.exe backend\download_model.py
-cd frontend
-npm ci
+backend\.venv-local\Scripts\python.exe backend\install_models.py wai
 ```
 
-El modelo se descarga explícitamente; la inferencia usa exclusivamente archivos locales con HF_HUB_OFFLINE y TRANSFORMERS_OFFLINE. Tras instalar puedes desconectar Internet y generar mediante localhost. Vite dirige /api y /outputs a Python.
+WAI usa el checkpoint local Safetensors verificado por SHA256 y las configuraciones/tokenizadores SDXL de Animagine; los pesos corresponden al checkpoint seleccionado. La inferencia no descarga archivos ni llama a un proveedor de pago. Fuentes y condiciones: MODELS.md.
 
-## Modelo y límites
+Los modelos ocupan aproximadamente 12.9 GiB entre ambos. Las fotos y sus parámetros son archivos adicionales. Windows puede ampliar pagefile.sys cuando aumenta la demanda de memoria comprometida: ese archivo no es una caché de fotos ni debe borrarse como basura. Referencia: https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/introduction-to-the-page-file.
 
-Modelo único: [Animagine XL 4.0 de Cagliostro Research Lab](https://huggingface.co/cagliostrolab/animagine-xl-4.0), SDXL, safetensors FP16. La descarga selecciona componentes Diffusers sin duplicar el checkpoint. La revisión queda en backend/models/animagine-xl-4.0/REVISION.txt y en los resultados.
+## Escena y personajes
 
-Licencia [CreativeML Open RAIL++-M](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md), que permite uso personal sujeto a sus condiciones y restricciones. No es dominio público ni un modelo NovelAI.
+- El campo de escena describe contexto, lugar, iluminación, acción general y cámara.
+- Las tarjetas contienen identidad y apariencia. Su nombre solo organiza la interfaz; el texto enviado es la descripción no vacía.
+- El backend construye el prompt efectivo en este orden: artista, estilo, descripciones de personajes, escena. El contador y la vista de prompt efectivo usan exactamente esa función.
+- SDXL sigue recibiendo un texto compartido, no regiones o canales independientes para cada personaje. Puede mezclar atributos y no se garantiza fidelidad perfecta. Si introduces identidad en la escena también llegará al modelo; no se elimina texto automáticamente.
+- El límite de 220 tokens de contenido se aplica al prompt efectivo combinado, incluyendo personajes/artista/estilo; el negativo tiene 220 independientes. El contador toma el mayor resultado de los dos tokenizadores CLIP.
+- CLIP conserva ventanas de 77 posiciones (75 de contenido más BOS/EOS). Los prompts largos usan hasta tres bloques concatenados y un embedding global ponderado. Los cortos conservan la ruta nativa. No se trunca silenciosamente.
+- Las etiquetas son texto aprendido por el modelo, no una API que descargue estilos ni un entrenamiento. El catálogo externo enlazado es https://tags.gallery/en/v4-5; su presencia no garantiza soporte en estos checkpoints.
 
-Inicio: 1024x1024, Euler Ancestral, guidance 5, 28 pasos. Retrato 832x1216 o paisaje 1216x832; 768x768 reduce memoria y puede reducir calidad respecto a la resolución nativa. FP16, model CPU offload, VAE tiling y slicing; los componentes inactivos pasan a RAM. Una imagen por tarea y una tarea a la vez. Una solicitud simultánea devuelve 409.
+Los metadatos guardan los campos originales, el prompt efectivo, el modo shared_prompt_characters_first, la seed y los parámetros realmente aplicados. Cambiar el orden respecto a versiones anteriores puede cambiar una imagen aunque se repita la seed.
 
-Las tarjetas organizan texto: sus descripciones se concatenan al Base prompt; el nombre de tarjeta es solo una etiqueta. No hay asignación regional ni garantía de atributos independientes; pueden mezclarse. ComfyUI permitiría explorar conditioning regional mediante workflows adicionales, pero requeriría integración y validación propia. Para esta versión conviene usar un solo personaje cuando importe la identidad.
+## Cuenta, perfil y privacidad
 
-La pipeline estándar limita a 77 tokens CLIP: se rechaza el texto que exceda el límite en vez de truncarlo. No implementa sintaxis de pesos NovelAI ni ejecuta código remoto para prompts largos. El negative prompt llega al condicionamiento negativo real y guidance siempre es mayor que 1.
+El login local verifica credenciales en el servicio original HTTPS de Render (MYSTIKAL_AUTH_URL; por defecto https://mystikal-ai.onrender.com). Las contraseñas no se guardan en SQLite local. La sesión local usa una cookie HttpOnly/SameSite Strict con un token opaco cuyo hash se guarda en servidor. El registro permanece en el servicio original.
 
-## Resultados
+La cuenta original usa TiDB Cloud/MySQL. Sus variables DB_HOST, DB_PORT, DB_USER, DB_PASSWORD y DB_NAME pertenecen al backend Node en Render; no se copian al frontend ni al repositorio. Cambiar nombre/correo/icono requiere el endpoint de cuentas actualizado en Render y contraseña actual. La identidad remota estable conserva la propiedad de las fotos tras cambiar correo.
 
-PNG en backend/outputs con metadatos embebidos bajo la clave mystikal y JSON junto a cada imagen. La galería se reconstruye desde disco. Selecciona una imagen y Reutilizar ajustes para recuperar prompt, negative, personajes, resolución, seed, pasos, guidance y sampler. Seed -1 es aleatoria; se guarda la efectiva. Una seed fija ayuda a repetir, aunque versiones distintas de software/hardware pueden cambiar resultados.
+backend/data/privacy.sqlite3 mantiene propietarios, sesiones y preferencias. Las imágenes nuevas se guardan en backend/data/private/<propietario-servidor>/sfw o nsfw; ninguna carpeta privada está montada como recurso estático. La API comprueba propietario para metadatos, archivos privados, tareas y ediciones. El usuario de localStorage no es autorización.
 
-El progreso cuenta pasos reales de denoising. Carga y decodificación muestran su estado sin porcentaje inventado. Cancelar espera al siguiente callback; durante carga o decodificación puede tardar. Reiniciar pierde tareas activas, pero conserva imágenes.
+Las fotos comienzan privadas. La clasificación SFW/NSFW es manual dentro de Ajustes avanzados y requiere declaración de mayoría de edad; no detecta contenido ni verifica edad. Favoritas y destacadas son categorías personales, no publicación. Compartir por enlace es explícito; la preferencia de compartir futuras imágenes también incluye las marcadas NSFW si el usuario la activa. El home exige imagen compartida, marcada SFW y revisada manualmente. La copia pública omite metadatos privados.
 
-## Solución de problemas
+La galería permite título, notas, favoritas, destacadas y papelera recuperable. La capacidad por defecto es de 1000 fotos activas por propietario (MYSTIKAL_GALLERY_LIMIT). Mover a papelera revoca enlaces públicos; restaurar mantiene la foto privada. La papelera conserva archivos y no equivale a liberar espacio físico.
 
-- CUDA no disponible/no kernel image: comprueba nvidia-smi y PyTorch 2.7.1+cu128. Verifica una operación CUDA real, no solo is_available.
-- Falta VRAM: cierra aplicaciones GPU, prueba 768x768 y reinicia el backend. No se garantiza que cualquier tamaño quepa en 8 GB.
-- Modelo pendiente/incompleto: repite download_model.py con conexión para reanudar.
-- Prompt largo: acorta Base, Undesired y tarjetas; se mide el texto combinado.
-- Puerto ocupado: detén la instancia previa en 8000 o 5173.
-- Backend desconectado: revisa la terminal Python.
+La sesión invitada es temporal: al salir o expirar no se recuperan sus fotos desde otra cuenta. Descarga lo que quieras conservar. La privacidad protege acceso desde la aplicación, no cifra el disco ni protege frente a quien pueda leer tu cuenta de Windows.
 
-Fuentes: [PyTorch Blackwell/CUDA 12.8](https://pytorch.org/blog/pytorch-2-7/), [memoria Diffusers](https://huggingface.co/docs/diffusers/optimization/memory), [API SDXL](https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl).
+Los archivos antiguos de backend/outputs no se borran ni se asignan automáticamente. backend/import_legacy.py permite una importación local opcional sin enviar datos al chat. Conserva originales.
 
-## Home y experiencia del estudio
+## Vercel y Render
 
-La portada `/` muestra banners con imágenes reales de la galería, tarjetas de funciones y una explicación del stack. `/generate` abre el estudio. No se envían imágenes a servicios externos para construir el home.
+Vercel publica el portfolio y la demo SFW, sin inferencia. /demo es pública; /generate e /images web muestran ejemplos pregenerados tras cuenta/invitado. Los ejemplos no cambian al editar el formulario. La galería demo guarda ejemplos elegidos en el navegador, separados por cuenta/sesión; no simula historial de generaciones propias ni sincroniza archivos del PC.
 
-Durante una tarea aparece un spinner con tiempo transcurrido y fases: carga, interpretación del prompt, denoising y decodificación. Borrador usa 768x768 y 20 pasos; Detalle mantiene 1024x1024 y 28 pasos. Borrador reduce cómputo a cambio de detalle; no es una aceleración equivalente de la misma imagen.
+Root Directory de Vercel: frontend. Los rewrites de login, registro y /api/account llegan al servicio original https://mystikal-ai.onrender.com. El dominio antiguo mystikal-ai-backend.onrender.com era incorrecto. El perfil web necesita publicar también backend/accounts.js y backend/index.js en Render; sus tablas de perfiles/sesiones se crean de forma aditiva. Los usuarios con la sesión antigua del navegador deben iniciar sesión nuevamente.
 
-El backend conserva hasta cuatro pares de embeddings de prompt/negative en RAM para reutilizarlos al repetir exactamente el texto. Cambiar texto obliga a codificar de nuevo. Los errores o cancelaciones limpian esa caché. El modelo sigue cargado entre generaciones exitosas; al reiniciar vuelve a cargarse.
+El endpoint de generación remota de Node responde 410: fue retirado y ya no llama a Replicate. La clave/saldo de la cuenta externa no se modifica ni se publica. Para aplicar esa retirada en Render es necesario desplegar el código actualizado; editarlo localmente no cambia un despliegue ya publicado.
 
-Los nuevos JSON incluyen load_seconds, encoding_seconds, denoise_seconds, decode_seconds, inference_seconds, model_warm y prompt_cache_hit. Esto permite distinguir la primera carga del trabajo por imagen. El total histórico de 283.15 s a 1024x1024 y 28 pasos no tenía ese desglose; no permite atribuir por sí solo el retraso a una fase concreta. Tras modificar Python hay que reiniciar el backend; Vite actualiza la interfaz en desarrollo automáticamente.
+La portada fija frontend/public/images/mystikal-home-v1.png es un recurso promocional SFW creado con image_gen, no evidencia de rendimiento de los modelos locales. La demo usa únicamente ejemplos registrados de Animagine. El footer mantiene el crédito mxrtnn_dev y sus iconos sin enlaces personales configurados.
 
-### Validación del rediseño
-
-- TypeScript, build Vite, lint de los componentes nuevos y compilación Python: correctos.
-- Navegador: portada, entrada al estudio, preset Borrador y visualización de un resultado guardado comprobados.
-- GPU real, dos generaciones técnicas 512x512 / 2 pasos / seed 42: 40.98 s en frío y 2.26 s con modelo y texto reutilizados. El procesamiento de texto fue 17.73 s frente a 0.02 s; los píxeles de ambas salidas fueron idénticos. Estas pruebas verifican la caché, no calidad ni tiempos esperados a 1024 / 28 pasos.
-- Se inició una prueba 1024x1024 / 28 pasos y se detuvo tras 9 pasos; se observaron pasos de aproximadamente 6–19 s, incluidos los iniciales. No se completó una medición comparable de imagen a 28 pasos; no se atribuye una aceleración total a la caché.
-- Los archivos técnicos de prueba se guardaron fuera de la galería del usuario. No se descargaron nuevos modelos ni se modificaron imágenes existentes.
-
-## Acceso con cuenta e invitado
-
-Las rutas /login y /register conservan las pantallas originales y su API de autenticación existente. El generador y la galería requieren una sesión del frontend, que puede ser de cuenta o de invitado. Continuar como invitado no crea una cuenta ni envía credenciales: guarda una marca en sessionStorage para esa pestaña y funciona sin Internet. Al iniciar sesión con una cuenta se elimina esa marca; Salir limpia la sesión de acceso, sin borrar imágenes ni parámetros.
-
-El login mantiene su estética original y añade el botón de invitado y un fondo decorativo animado local. Las ilustraciones se animan con CSS y respetan la preferencia de movimiento reducido. Registro y autenticación con credenciales mantienen su conexión anterior; no se migró su base de datos al backend de inferencia.
-
-Verificado en navegador: redirección del generador al login sin sesión, acceso como invitado, salida de invitado y navegación entre login/registro. TypeScript, lint y build correctos. No se enviaron credenciales ni se creó una cuenta para las pruebas.
-
-## Privacidad actual: sustituye el almacenamiento compartido anterior
-
-IMPORTANTE: reinicia Python para activar estos cambios. Hasta detener el backend anterior, ese proceso sigue ejecutando sus rutas antiguas. La interfaz nueva deja de usar la galería antigua para el home inmediatamente.
-
-- Selector manual SFW/NSFW ANTES de generar, dentro del modal Ajustes avanzados, con declaración de mayoría de edad. No hay detector ni inferencia automática de categoría. La marca no cambia el prompt ni la generación.
-- Nuevos archivos en backend/data/private/<propietario-servidor>/sfw o nsfw. No hay montaje estático de esa carpeta ni de backend/outputs.
-- SQLite guarda propietarios, preferencias y sesiones. Tokens aleatorios de 256 bits en cookie HttpOnly/SameSite Strict; solo su hash se almacena en disco. La API comprueba sesión y propietario en galería, archivos privados, metadatos, tareas y cambios de publicación. No usa el email de localStorage como prueba de identidad.
-- El login local verifica las credenciales en el servicio de cuentas HTTPS preexistente. No guarda contraseñas. MYSTIKAL_AUTH_URL permite configurar ese origen; por defecto conserva el Render usado por el formulario original. El registro sigue en el servicio previo. Una nueva sesión de cuenta necesita Internet; una sesión válida y la generación ya instalada pueden seguir usándose sin conexión. Invitado es local y temporal (12 horas); al salir se revoca el acceso a sus imágenes. Descarga lo que quieras conservar antes de salir.
-- Todo comienza privado. Solo una cuenta verificada puede compartir. En /profile puedes cambiar cada imagen o activar la publicación automática de FUTURAS generaciones, incluidas NSFW. Compartir significa que quien tenga el enlace puede verla; las copias públicas omiten metadatos embebidos. Volver a privada revoca nuevas descargas, pero no borra copias que otros ya descargaron.
-- El home usa /api/public/gallery: requiere compartida + SFW + confirmación manual de revisión SFW. Las imágenes NSFW nunca entran en ese endpoint. La etiqueta manual puede ser incorrecta: el programa no detecta el contenido real.
-- El servidor de desarrollo Vite solo permite servir archivos de frontend. No sirve archivos del backend por /@fs/.
-- Es privacidad de acceso en esta aplicación local, no cifrado ni protección frente a administradores o personas que puedan leer tu sesión/carpeta de Windows. Mantén los servicios enlazados a localhost; esta configuración no está diseñada para exponerla públicamente en Internet.
-
-Las imágenes anteriores siguen intactas en backend/outputs, sin publicación ni dueño supuesto. Opcionalmente puedes recuperarlas SIN enviar datos al chat: inicia sesión con tu cuenta en la app actualizada y ejecuta:
-
-```powershell
-backend\.venv-local\Scripts\python.exe backend\import_legacy.py
-```
-
-El script pide el correo en tu propia terminal, lo usa solo localmente y copia las imágenes a esa cuenta, siempre privadas y clasificadas conservadoramente como NSFW/sin revisar. No borra originales, no sube imágenes y no activa la preferencia de compartir para esas copias.
-
-## Artistas / TAGs
-
-Fuente: https://tags.gallery/en/v4-5. Es un catálogo externo de etiquetas y ejemplos generados, no una API oficial de NovelAI que entrene modelos. No se encontró una API pública documentada y el acceso programático al sitio respondió 403; no se eludió el bloqueo ni se copió el catálogo completo.
-
-El modal de ajustes incluye un campo de artista y un enlace al catálogo. /api/artists?q= conserva su lista inicial de seis nombres, sin afirmar integración en vivo. Puedes escribir cualquier etiqueta copiada manualmente del catálogo. Se antepone al prompt efectivo y cuenta para el límite CLIP; se guarda y recupera con la imagen. El soporte en Animagine XL 4.0 no está validado por pertenecer al catálogo, y la sintaxis de pesos NovelAI no es compatible. No se descargaron imágenes ni modelos de artistas.
-
-Pruebas de privacidad reproducibles (no usan credenciales reales ni generan imágenes):
-
-```powershell
-backend\.venv-local\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
-backend\.venv-local\Scripts\python.exe -m unittest discover -s backend -p test_privacy.py -v
-```
-
-Validación adicional: generación REAL en GPU de prueba técnica 512x512, 1 paso, con nsfw=true y artista freng; 48.47 s en frío, 5103 MiB de pico asignado por PyTorch. Se comprobaron carpeta NSFW del propietario, conservación de artista/marca, descarga autorizada, denegación sin sesión y exclusión del home. El prompt de prueba no era explícito: valida el enrutamiento de la marca manual, no un detector. Se ejecutó en almacenamiento temporal aislado, sin publicar ni incorporar la imagen a la galería del usuario. Diez pruebas de autorización y publicación, TypeScript, lint y build pasaron. No se probó un login real porque no se solicitaron credenciales; la validación del proveedor se probó con respuestas controladas.
-
-## Portada fija y diseño del home
-
-La portada usa frontend/public/images/mystikal-home-v1.png: una ilustración promocional SFW creada con la herramienta integrada image_gen. Es un recurso de diseño independiente de la galería, no una muestra de rendimiento de Animagine ni una imagen generada por la GPU local. La galería pública sigue limitada a contenido compartido, SFW y revisado. Se mantienen el título con iluminación al mouse y el flujo de login; se ajustaron tamaños de letra, espaciado, navegación, tarjetas y secciones técnicas.
-
-## Vercel: cuentas online y generación local
-
-El login y el modo invitado se mantienen en la versión pública; la GPU y los archivos privados permanecen en localhost.
-
-- Base de datos original: TiDB Cloud, protocolo MySQL. La configuración existente está en backend/.env (no versionado); no se copiaron credenciales a documentación ni al frontend. Variables DB_HOST, DB_PORT, DB_USER, DB_PASSWORD y DB_NAME pertenecen al servicio backend de Render, no a variables VITE_* ni al cliente de Vercel.
-- Backend original activo: https://mystikal-ai.onrender.com. El dominio mystikal-ai-backend.onrender.com devolvió 404 y se eliminó como fallback. También se corrigió el origen por defecto del puente de autenticación local Python.
-- En Vercel, /login muestra el formulario original y llama a /api/login. frontend/vercel.json reenvía esa ruta a https://mystikal-ai.onrender.com/api/login. /api/register se reenvía al registro del mismo servicio. Root Directory de Vercel debe ser frontend para cargar este vercel.json. No hace falta copiar las credenciales de TiDB a Vercel.
-- Invitado público funciona en el navegador sin llamar a /api/auth/guest ni necesitar Python. Iniciar sesión, cerrar sesión y /profile públicos conservan el flujo de navegación. El perfil web permite editar la cuenta y organizar una colección de ejemplos del navegador; no carga archivos privados del PC. El estado público guardado en el navegador solo controla la navegación pública: no es un token de autorización para APIs ni archivos privados.
-- /generate e /images públicos requieren cuenta o invitado y abren la demo SFW; /demo permite explorarla directamente sin cuenta. El estudio local permite generación nueva con la GPU o, por elección explícita, FLUX en Replicate. La demo pública no llama a ninguno. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
-- Registro local utiliza VITE_AUTH_API_URL si se configura, con https://mystikal-ai.onrender.com como valor por defecto. El backend Python usa MYSTIKAL_AUTH_URL con el mismo valor por defecto. Las variables VITE_API_URL antiguas no se usan para sustituir las rutas de login públicas.
-
-Validado: conexión local de solo lectura a TiDB con TLS y certificado verificado (SELECT 1), servicio original Render activo, validación de login sin campos (400) y consulta con una identidad de diagnóstico inexistente (401, sin crear cuentas ni usar credenciales del usuario). No se ha probado un login válido del usuario ni se ha publicado automáticamente la corrección.
-
-Prueba de comportamiento de sesiones:
-
-```powershell
-cd frontend
-node scripts/check-session.cjs
-```
-
-
-## Ajustes avanzados, modelos y perfil
-
-El botón Ajustes avanzados abre un dialog modal con selección de Animagine XL 4.0 / FLUX 1.1 Pro, estilo (original, anime, retro, realista, 3D o 2D), resolución, seed, artista y lotes de 1–4 imágenes. Los estilos añaden texto al prompt: no entrenan ni cambian los pesos del modelo. Los lotes son secuenciales; la seed fija aumenta por imagen. Cancelar conserva las fotos ya terminadas.
-
-Animagine mantiene pasos, guidance, sampler y negative prompt. El switch de contenido adulto está apagado por defecto y requiere declarar mayoría de edad; es clasificación manual, no detector, verificación de edad ni filtro del modelo. Reutilizar una imagen no reactiva el switch. FLUX mantiene los controles de seguridad del proveedor y no habilita ese modo.
-
-Para FLUX, el backend Python lee REPLICATE_API_TOKEN del entorno o del backend/.env existente. Nunca lo envía al frontend. La solicitud requiere paid_confirmed=true y cobra según el proveedor, por imagen; cancelar una predicción ya iniciada puede consumir saldo. No envía negative prompt, pasos, guidance ni sampler, porque esta API no los admite. La interfaz los desactiva y los metadatos applied_settings registran null para esos controles. El navegador público demo no realiza inferencia, aunque permite explorar el selector de modelos.
-
-El perfil local permite cambiar nombre/icono y, para cuentas, correo mediante el servicio original (requiere contraseña actual). El ID remoto estable conserva la propiedad del historial después de cambiar el correo. Los invitados solo cambian nombre/icono de su sesión. La galería admite favoritas, destacadas, título, notas, papelera y restauración. Editar no altera el prompt original. Favoritas/destacadas no publican imágenes. Mover a papelera revoca la publicación; restaurar mantiene la imagen privada.
-
-El contador limita a 1000 fotos ACTIVAS por propietario, configurable mediante MYSTIKAL_GALLERY_LIMIT. Se comprueba tanto al iniciar un lote como al guardar/restaurar cada imagen. La papelera conserva archivos y no cuenta para esa cuota: no representa un límite de espacio en disco ni un borrado definitivo.
-
-La colección demo se guarda en localStorage, separada por ID de cuenta o sesión invitada. Solo contiene ejemplos que el usuario decide guardar, no los presenta como generaciones propias. No se sincroniza entre navegadores y puede perderse al borrar sus datos.
-
-### Publicación necesaria
-
-1. Publicar el backend Node en Render con backend/accounts.js y backend/index.js actualizados. La cuenta de base de datos necesita CREATE TABLE: se crean de forma aditiva mystikal_web_sessions y mystikal_profiles al primer acceso. No se modifica ni borra la tabla users existente. Conserva sus credenciales de autenticación anteriores.
-2. Publicar el frontend en Vercel con Root Directory frontend. Los rewrites /api/account y /api/account/:path* deben llegar al mismo Render que /api/login. La sesión de cuenta ahora se verifica en servidor con cookie HttpOnly y expira; usuarios que tenían solo el estado antiguo del navegador deben volver a iniciar sesión.
-3. Reiniciar el backend Python local y Vite para usar los nuevos endpoints y la migración aditiva SQLite. No borrar backend/data ni sus fotos.
-
-El origen público permitido por defecto es https://mystikal-ai.vercel.app. ACCOUNT_ORIGINS en Render admite otros orígenes exactos separados por coma, si se usa otro dominio. Las cookies de cuenta son Secure en Render/producción y no llevan Domain, para funcionar mediante el proxy de Vercel. Editar una cuenta necesita el despliegue de Render; publicar solo el frontend no es suficiente.
-
-### Verificación de esta actualización
+## Verificación
 
 ```powershell
 backend\.venv-local\Scripts\python.exe -m unittest discover -s backend -p 'test*.py' -v
 node --test backend/accounts.test.cjs
 cd frontend
+node scripts/check-http.cjs
 node scripts/check-session.cjs
-node scripts/check-demo.cjs
 node scripts/check-demo-render.mjs
 npm run build
 ```
 
-Las pruebas usan bases de datos temporales, cuentas simuladas y adaptadores de generación simulados. Comprueban aislamiento, papelera, cuota, identidad tras cambio de correo, lotes, cancelación y payload FLUX. No consumen saldo de Replicate, no modifican cuentas reales ni prueban la calidad de una inferencia nueva. La vista previa automatizada del navegador no pudo conectar a localhost en esta sesión; se verificó el renderizado React y la compilación, sin afirmar inspección visual completa.
+Las pruebas de API usan datos temporales y cuentas simuladas, nunca las imágenes o credenciales del usuario. Las pruebas de proceso comprueban cierre real al finalizar/cancelar, incluyendo el redirector de Python en Windows y sus descendientes, y bloqueo de una asignación que supera un presupuesto nativo de prueba. Las pruebas de prompts validan que la descripción de un personaje original no sexual aparece antes de la escena. Las pruebas de GPU y sus mediciones se guardan solo en el directorio de trabajo de Codex.
+
+
+## Medición de la corrección de memoria
+
+Se detectó que el Python de un entorno virtual en Windows inicia un redirector y un intérprete hijo. Medir o terminar solo el PID devuelto por Popen no cubría al intérprete real. El supervisor ahora suma el árbol de procesos, lo incorpora al presupuesto nativo de Windows y termina todos sus descendientes. El cierre del backend también cierra el Job Object y termina la inferencia asociada.
+
+Pruebas reales SFW tras la corrección: un retrato de personaje original adulto vestido a 832×1216, 2 pasos, pico de memoria privada comprometida del árbol 10.78 GiB; un lote de 2 imágenes 512×512, 1 paso cada una, pico 11.02 GiB. El disco permaneció en 75.65 GiB libres y pagefile.sys en 15.16 GiB antes/después de ambas solicitudes. Es una validación técnica, no una evaluación de calidad ni una garantía sobre otras aplicaciones o cualquier carga futura. Las protecciones siguen activas en resoluciones y prompts mayores.
+
+Los datos del usuario se conservaron. Se eliminaron físicamente 6.541 GiB de Pony y CSR, el archivo de instalación Node ya extraído y los módulos de la dependencia Replicate. Los modelos restantes ocupan unos 12.9 GiB. Las cachés grandes de pip ya estaban vacías; no se eliminaron entornos Python ni archivos de memoria virtual/hibernación de Windows.

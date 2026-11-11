@@ -8,3 +8,5 @@ Pillow==11.2.1
 huggingface-hub==0.32.4
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.7.1+cu128
+
+psutil==7.2.2

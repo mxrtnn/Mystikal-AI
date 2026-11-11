@@ -1,0 +1,22 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const ts=require('typescript');
+const source=fs.readFileSync(path.join(__dirname,'../src/services/http.ts'),'utf8');
+let fetchImpl;
+const context={exports:{},fetch:(...args)=>fetchImpl(...args),Error};
+vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,context);
+const {readJsonResponse,requestJson,ApiError}=context.exports;
+(async()=>{
+ for(const response of [new Response('',{status:502}),new Response('<html>Bad gateway</html>',{status:502})])await assert.rejects(()=>readJsonResponse(response),error=>error instanceof ApiError&&error.unavailable&&/backend no está disponible/.test(error.message));
+ await assert.rejects(()=>readJsonResponse(new Response('Internal Server Error',{status:500})),/HTTP 500/);
+ for(const value of ['', '{"id":', 'null'])await assert.rejects(()=>readJsonResponse(new Response(value,{status:200})),/respuesta vacía o incompleta/);
+ await assert.rejects(()=>readJsonResponse(new Response(JSON.stringify({detail:'Validación del servidor'}),{status:422})),/Validación del servidor/);
+ await assert.rejects(()=>readJsonResponse(new Response(JSON.stringify({detail:[{msg:'Revisa la resolución.'}]}),{status:422})),/Revisa la resolución/);
+ assert.equal((await readJsonResponse(new Response('{"id":"test"}'))).id,'test');
+ assert.equal((await readJsonResponse(new Response('[{"id":"test"}]'))).length,1);
+ fetchImpl=async()=>{throw new TypeError('Failed to fetch');};await assert.rejects(()=>requestJson('/api/status'),error=>error.unavailable);
+ const aborted=new Error('aborted');aborted.name='AbortError';fetchImpl=async()=>{throw aborted;};await assert.rejects(()=>requestJson('/api/status'),error=>error===aborted);
+ console.log('PASS: respuestas vacías/HTML, errores HTTP/validación, JSON válido, fallo de red y cancelación. No se reintentan solicitudes de generación.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
