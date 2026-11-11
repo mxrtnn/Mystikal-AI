@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, User, Mail, Lock } from 'lucide-react';
+import { REGISTER_URL } from '../services/runtime';
 
 function Register() {
   const navigate = useNavigate();
@@ -12,8 +13,6 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Fallback directo a Render para evitar fallos de localhost en producción
-  const API_URL = import.meta.env.VITE_API_URL || 'https://mystikal-ai-backend.onrender.com';
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +20,7 @@ function Register() {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/register`, {
+      const response = await fetch(REGISTER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),

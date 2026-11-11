@@ -17,7 +17,7 @@ DATA.mkdir(exist_ok=True)
 PRIVATE = DATA / 'private'
 PRIVATE.mkdir(exist_ok=True)
 DB = DATA / 'privacy.sqlite3'
-AUTH_URL = os.environ.get('MYSTIKAL_AUTH_URL', 'https://mystikal-ai-backend.onrender.com').rstrip('/')
+AUTH_URL = os.environ.get('MYSTIKAL_AUTH_URL', 'https://mystikal-ai.onrender.com').rstrip('/')
 router = APIRouter()
 
 @contextmanager

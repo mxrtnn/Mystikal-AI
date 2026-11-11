@@ -131,12 +131,22 @@ Validación adicional: generación REAL en GPU de prueba técnica 512x512, 1 pas
 
 La portada usa frontend/public/images/mystikal-home-v1.png: una ilustración promocional SFW creada con la herramienta integrada image_gen. Es un recurso de diseño independiente de la galería, no una muestra de rendimiento de Animagine ni una imagen generada por la GPU local. La galería pública sigue limitada a contenido compartido, SFW y revisado. Se mantienen el título con iluminación al mouse y el flujo de login; se ajustaron tamaños de letra, espaciado, navegación, tarjetas y secciones técnicas.
 
-## Vercel: home público y generador en el PC
+## Vercel: cuentas online y generación local
 
-El despliegue público es un escaparate estático. En localhost/127.0.0.1/::1 se habilitan el login, invitado, perfil y generador locales. En cualquier otro host, incluidas las URLs de producción y preview de Vercel, /login, /register, /generate, /images, /profile y /dashboard muestran una pantalla de acceso al estudio local. No se solicitan credenciales ni se hacen llamadas a la API local desde el home público. La galería privada no se carga en Vercel.
+El login y el modo invitado se mantienen en la versión pública; la GPU y los archivos privados permanecen en localhost.
 
-El botón de esa pantalla navega a http://127.0.0.1:5173/generate en EL DISPOSITIVO del visitante; no realiza un fetch a localhost, ni se conecta a la GPU del desarrollador desde Internet. Si el estudio está apagado, el navegador no podrá abrir ese destino. Inicia primero Python y Vite con iniciar-local.ps1, uno en cada terminal.
+- Base de datos original: TiDB Cloud, protocolo MySQL. La configuración existente está en backend/.env (no versionado); no se copiaron credenciales a documentación ni al frontend. Variables DB_HOST, DB_PORT, DB_USER, DB_PASSWORD y DB_NAME pertenecen al servicio backend de Render, no a variables VITE_* ni al cliente de Vercel.
+- Backend original activo: https://mystikal-ai.onrender.com. El dominio mystikal-ai-backend.onrender.com devolvió 404 y se eliminó como fallback. También se corrigió el origen por defecto del puente de autenticación local Python.
+- En Vercel, /login muestra el formulario original y llama a /api/login. frontend/vercel.json reenvía esa ruta a https://mystikal-ai.onrender.com/api/login. /api/register se reenvía al registro del mismo servicio. Root Directory de Vercel debe ser frontend para cargar este vercel.json. No hace falta copiar las credenciales de TiDB a Vercel.
+- Invitado público funciona en el navegador sin llamar a /api/auth/guest ni necesitar Python. Iniciar sesión, cerrar sesión y /profile públicos conservan el flujo de navegación. El perfil web muestra la cuenta; no carga archivos privados del PC. El estado público guardado en el navegador solo controla la navegación pública: no es un token de autorización para APIs ni archivos privados.
+- /generate e /images públicos requieren cuenta o invitado y explican cómo abrir localhost. La generación sigue exclusivamente en la GPU local. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
+- Registro local utiliza VITE_AUTH_API_URL si se configura, con https://mystikal-ai.onrender.com como valor por defecto. El backend Python usa MYSTIKAL_AUTH_URL con el mismo valor por defecto. Las variables VITE_API_URL antiguas no se usan para sustituir las rutas de login públicas.
 
-Vercel debe tener Root Directory = frontend, Build Command = npm run build y Output Directory = dist. frontend/vercel.json incluye rewrites de las rutas React hacia index.html para soportar enlaces directos y recargas. No hay rewrite de /api hacia un PC privado: el proxy de vite.config.ts es solo para desarrollo local. No configures las APIs antiguas de Render como si fueran el backend Python de generación.
+Validado: conexión local de solo lectura a TiDB con TLS y certificado verificado (SELECT 1), servicio original Render activo, validación de login sin campos (400) y consulta con una identidad de diagnóstico inexistente (401, sin crear cuentas ni usar credenciales del usuario). No se ha probado un login válido del usuario ni se ha publicado automáticamente la corrección.
 
-Tras publicar los cambios en GitHub, crea un nuevo despliegue o espera el despliegue automático de Vercel. Recargar una versión antigua de producción no instala esta corrección.
+Prueba de comportamiento de sesiones:
+
+```powershell
+cd frontend
+node scripts/check-session.cjs
+```

@@ -4,12 +4,13 @@ import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, Check, UserRound } from 'lucide-react';
 import LoginBackdrop from '../components/LoginBackdrop';
 import { continueAsGuest } from '../services/session';
+import { IS_LOCAL_STUDIO, LOGIN_URL } from '../services/runtime';
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestedPath = location.state?.from;
-  const destination = ['/generate', '/images', '/dashboard', '/profile'].includes(requestedPath) ? requestedPath : '/generate';
+  const destination = ['/generate', '/images', '/dashboard', '/profile'].includes(requestedPath) ? requestedPath : IS_LOCAL_STUDIO ? '/generate' : '/profile';
   const [email, setEmail] = useState(() => localStorage.getItem('remembered_email') || '');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('remembered_email')));
@@ -17,7 +18,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // El backend local verifica la cuenta existente y emite una cookie privada.
+  // Local: cookie privada de Python. Vercel: servicio de cuentas original mediante proxy.
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,12 +26,14 @@ function Login() {
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/auth/login`, {
+      const response = await fetch(LOGIN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, remember: rememberMe }),
       });
 
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      if (!isJson) throw new Error('El servicio de cuentas devolvió una respuesta inesperada. Comprueba la configuración del despliegue.');
       const data = await response.json();
 
       if (response.ok) {
@@ -46,7 +49,7 @@ function Login() {
           localStorage.removeItem('remembered_email');
         }
 
-        setMessage({ type: 'success', text: '¡Sesión iniciada! Redirigiendo al generador...' });
+        setMessage({ type: 'success', text: IS_LOCAL_STUDIO ? '¡Sesión iniciada! Redirigiendo al generador...' : '¡Sesión iniciada! Abriendo tu perfil...' });
         setTimeout(() => {
           navigate(destination, { replace: true });
         }, 1500);
@@ -56,7 +59,7 @@ function Login() {
       }
     } catch (error) {
       console.error('Error en el login:', error);
-      setMessage({ type: 'error', text: 'No se pudo conectar con el servidor.' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo conectar con el servicio de cuentas.' });
       setLoading(false);
     }
   };

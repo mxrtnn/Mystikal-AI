@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/api/login", "destination": "https://mystikal-ai.onrender.com/api/login" },
+    { "source": "/api/register", "destination": "https://mystikal-ai.onrender.com/api/register" },
     { "source": "/login", "destination": "/index.html" },
     { "source": "/register", "destination": "/index.html" },
     { "source": "/generate", "destination": "/index.html" },
