@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/studio/:path*",
+      "destination": "https://mystikal-ai.onrender.com/api/studio/:path*"
+    },
+    {
       "source": "/api/account",
       "destination": "https://mystikal-ai.onrender.com/api/account"
     },
@@ -43,6 +47,10 @@
     },
     {
       "source": "/demo",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/muestra-visual",
       "destination": "/index.html"
     }
   ]

@@ -27,7 +27,9 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
-app.use(require('./accounts')(db.promise()));
+const accounts=require('./accounts')(db.promise());
+app.use(accounts);
+app.use('/api/studio',require('./public_studio')(db.promise(),accounts.authenticate));
 
 // Verificación de conexión
 db.getConnection((err, connection) => {

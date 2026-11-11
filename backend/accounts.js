@@ -66,5 +66,6 @@ module.exports = function accounts(db) {
     await db.query('DELETE FROM mystikal_web_sessions WHERE token_hash=?', [hash(token(req))]);
     res.clearCookie(COOKIE, cookieOptions); res.json({ok: true});
   }));
+  router.authenticate=async(req,res)=>{await initialize();return authenticated(req,res);};
   return router;
 };

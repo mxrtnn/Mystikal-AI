@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, User, Mail, Lock } from 'lucide-react';
@@ -6,6 +6,7 @@ import { REGISTER_URL } from '../services/runtime';
 
 function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +32,7 @@ function Register() {
       if (response.ok) {
         setMessage({ type: 'success', text: '¡Registro exitoso! Te redirigiremos al Login...' });
         setTimeout(() => {
-          navigate('/login');
+          navigate('/login',{state:{from:location.state?.from||'/generate'}});
         }, 2000);
       } else {
         setMessage({ type: 'error', text: data.error || 'Error al registrarse.' });

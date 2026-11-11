@@ -10,7 +10,7 @@ function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const requestedPath = location.state?.from;
-  const destination = ['/generate', '/images', '/dashboard', '/profile'].includes(requestedPath) ? requestedPath : IS_LOCAL_STUDIO ? '/generate' : '/profile';
+  const destination = ['/generate', '/images', '/dashboard', '/profile'].includes(requestedPath) ? requestedPath : '/generate';
   const [email, setEmail] = useState(() => localStorage.getItem('remembered_email') || '');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('remembered_email')));
@@ -49,7 +49,7 @@ function Login() {
           localStorage.removeItem('remembered_email');
         }
 
-        setMessage({ type: 'success', text: IS_LOCAL_STUDIO ? '¡Sesión iniciada! Redirigiendo al generador...' : '¡Sesión iniciada! Abriendo tu perfil...' });
+        setMessage({ type: 'success', text: IS_LOCAL_STUDIO ? '¡Sesión iniciada! Redirigiendo al generador...' : '¡Sesión iniciada! Abriendo el estudio...' });
         setTimeout(() => {
           navigate(destination, { replace: true });
         }, 1500);

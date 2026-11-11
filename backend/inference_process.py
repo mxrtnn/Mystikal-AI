@@ -11,6 +11,7 @@ import time
 import psutil
 from generation_backends import Cancelled
 from process_budget import ProcessBudget,process_tree,private_memory
+from gpu_gate import gpu_gate
 
 GIB=1024**3
 ROOT=Path(__file__).resolve().parent
@@ -32,6 +33,9 @@ def guard_reason(free_disk,available_ram,private_bytes,pagefile_growth,total_ram
     return None
 
 def run_isolated(payload,cancelled,on_event):
+    with gpu_gate():return _run_isolated(payload,cancelled,on_event)
+
+def _run_isolated(payload,cancelled,on_event):
     baseline=pagefile_bytes()
     if shutil.disk_usage(ROOT).free<12*GIB:raise RuntimeError('Se requieren 12 GiB libres antes de iniciar. No se borrarán imágenes ni modelos automáticamente.')
     env=os.environ.copy();env['PYTHONUTF8']='1';env['PYTHONUNBUFFERED']='1'

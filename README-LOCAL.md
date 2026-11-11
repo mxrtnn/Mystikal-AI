@@ -69,7 +69,7 @@ Los archivos antiguos de backend/outputs no se borran ni se asignan automáticam
 
 ## Vercel y Render
 
-Vercel publica el portfolio y la demo SFW, sin inferencia. /demo es pública; /generate e /images web muestran ejemplos pregenerados tras cuenta/invitado. Los ejemplos no cambian al editar el formulario. La galería demo guarda ejemplos elegidos en el navegador, separados por cuenta/sesión; no simula historial de generaciones propias ni sincroniza archivos del PC.
+Vercel publica el portfolio y la interfaz de prueba. /muestra-visual es pública y contiene solo ejemplos pregenerados, sin formulario de generación; /demo redirige allí. /generate web usa el servicio de cuentas/cola de Render y la GPU del PC mediante un conector saliente. Solo cuentas autenticadas pueden reservar una generación de prueba; los invitados pueden ver la muestra visual. La galería demo guarda ejemplos elegidos en el navegador, separados por cuenta/sesión; no simula historial de generaciones propias ni sincroniza archivos del PC.
 
 Root Directory de Vercel: frontend. Los rewrites de login, registro y /api/account llegan al servicio original https://mystikal-ai.onrender.com. El dominio antiguo mystikal-ai-backend.onrender.com era incorrecto. El perfil web necesita publicar también backend/accounts.js y backend/index.js en Render; sus tablas de perfiles/sesiones se crean de forma aditiva. Los usuarios con la sesión antigua del navegador deben iniciar sesión nuevamente.
 
@@ -99,3 +99,43 @@ Se detectó que el Python de un entorno virtual en Windows inicia un redirector 
 Pruebas reales SFW tras la corrección: un retrato de personaje original adulto vestido a 832×1216, 2 pasos, pico de memoria privada comprometida del árbol 10.78 GiB; un lote de 2 imágenes 512×512, 1 paso cada una, pico 11.02 GiB. El disco permaneció en 75.65 GiB libres y pagefile.sys en 15.16 GiB antes/después de ambas solicitudes. Es una validación técnica, no una evaluación de calidad ni una garantía sobre otras aplicaciones o cualquier carga futura. Las protecciones siguen activas en resoluciones y prompts mayores.
 
 Los datos del usuario se conservaron. Se eliminaron físicamente 6.541 GiB de Pony y CSR, el archivo de instalación Node ya extraído y los módulos de la dependencia Replicate. Los modelos restantes ocupan unos 12.9 GiB. Las cachés grandes de pip ya estaban vacías; no se eliminaron entornos Python ni archivos de memoria virtual/hibernación de Windows.
+
+
+## Prueba pública: una imagen por cuenta
+
+La prueba web nueva utiliza WAI en el PC, no una API de pago ni la GPU de Vercel. Las cuentas normales reciben una imagen completada; después /api/studio/jobs rechaza nuevas solicitudes con Prueba terminada. Los intentos fallidos o asignaciones vencidas devuelven la reserva. Recargar, borrar localStorage o cambiar el correo no reinicia el contador: la cuota usa el ID de cuenta persistido en TiDB y transacciones con bloqueo de fila.
+
+La cuenta existente martinjara580@gmail.com tiene acceso ampliado. El servidor fija su ID inmutable en studio_control al inicializar; el cliente no decide ese rol y cambiar otro correo no lo concede. STUDIO_OWNER_EMAIL permite configurar el correo de búsqueda inicial en Render, pero no reemplaza automáticamente un ID ya fijado. No se conceden privilegios por un campo owner/email del navegador.
+
+Las tablas aditivas studio_control, studio_access y studio_jobs guardan la presencia de GPU, cuotas, reservas y resultados. El usuario de TiDB de Render necesita CREATE TABLE, SELECT, INSERT y UPDATE. Las imágenes de prueba se guardan como PNG en TiDB, se entregan solo a su cuenta y no entran al home. Se limita el PNG a 4 MiB y la cola a 8 trabajos. No se almacenan claves de Windows ni contraseñas del conector en archivos nuevos.
+
+### Publicar y conectar el PC
+
+1. Hacer push de los commits de main (lo hace el usuario). Vercel debe desplegar frontend con su vercel.json y Render el backend Node actualizado. Si Render no tiene despliegue automático, seleccionar Deploy latest commit. Ambos despliegues son necesarios.
+2. En el PC con WAI instalado, abrir una terminal en la raíz y ejecutar:
+
+```powershell
+.\iniciar-local.ps1 publico
+```
+
+3. Introducir en esa terminal la contraseña de la cuenta propietaria de Mystikal. getpass la oculta; no se guarda ni se pide enviarla al chat. Mantener el conector y el PC funcionando. Ctrl+C desconecta la GPU. La web mostrará el estudio desconectado cuando venza su señal de presencia; no consumirá pruebas nuevas mientras esté desconectado.
+
+Para el generador público no es necesario iniciar Vite ni el servidor FastAPI local: el conector ejecuta los workers aislados directamente. Para usar el estudio personal se mantienen los comandos backend y frontend anteriores. Ambos usos comparten un bloqueo de archivo de GPU: nunca cargan dos modelos simultáneamente. El conector espera si el estudio personal está ocupado.
+
+El PC consulta por HTTPS la cola de Render. No se abre ningún puerto del PC ni se expone backend/data/private. Solo se procesa una solicitud nueva, validada como WAI, un PNG y sin modo adulto. Los IDs se validan como UUID, y los archivos temporales se crean en un directorio propio; no se aceptan rutas desde la cola. El resultado se recodifica sin metadatos embebidos, se sube con una asignación temporal autenticada y se borra la copia temporal al terminar. La selección general del prompt no es un detector de contenido.
+
+La sesión del conector vive solo en memoria y puede caducar. Si caduca, reiniciar el comando e iniciar sesión nuevamente. Si la conexión se pierde durante un trabajo, el proceso se cancela y la reserva se devuelve al vencer la asignación (aproximadamente dos minutos). Un fallo después de confirmar una imagen no genera una segunda ni duplica el contador.
+
+### Verificación específica de la prueba pública
+
+```powershell
+node --test backend/public_studio.test.cjs backend/accounts.test.cjs
+backend\.venv-local\Scripts\python.exe -m unittest discover -s backend -p 'test*.py' -v
+cd frontend
+node scripts/check-public-render.mjs
+npm run build
+```
+
+Las pruebas verifican invitado rechazado, GPU desconectada sin consumo de cuota, reserva concurrente única, bloqueo tras una imagen, acceso ampliado por ID, propiedad de imágenes, asignaciones, confirmación sin doble cobro de cuota, recuperación tras fallo y bloqueo compartido de GPU. La cuenta real del propietario no se utilizó para iniciar el conector durante la implementación; ese inicio requiere su contraseña local después de publicar Render. No se ha afirmado una prueba de extremo a extremo en producción antes de ese paso.
+
+La publicación oficial de WAI (modelo 827184) se consultó el 2026-11-11: v17.0 (versión 2883731) seguía siendo la última listada. No se descargaron checkpoints nuevos.

@@ -1,7 +1,9 @@
-param([ValidateSet('backend','frontend')][string]$Servicio = 'backend')
+param([ValidateSet('backend','frontend','publico')][string]$Servicio = 'backend')
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-if ($Servicio -eq 'backend') {
+if ($Servicio -eq 'publico') {
+    & .\backend\.venv-local\Scripts\python.exe backend\serve_public.py
+} elseif ($Servicio -eq 'backend') {
     & .\backend\.venv-local\Scripts\python.exe -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8000 --workers 1
 } else {
     Set-Location frontend
