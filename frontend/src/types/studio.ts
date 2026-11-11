@@ -1,0 +1,6 @@
+export type Character = { name: string; description: string };
+export type Engine = 'animagine' | 'flux';
+export type ArtStyle = 'original' | 'anime' | 'retro' | 'realistic' | '3d' | '2d';
+export type StudioSettings = { prompt: string; negative_prompt: string; characters: Character[]; width: number; height: number; steps: number; guidance: number; seed: number; sampler: string; nsfw: boolean; artist: string; engine: Engine; style: ArtStyle; count: number; adult_confirmed: boolean; paid_confirmed: boolean };
+export type ImageResult = Omit<StudioSettings, 'engine'|'style'|'count'|'adult_confirmed'|'paid_confirmed'> & { id: string; model: string; engine?: Engine; style?: ArtStyle; count?: number; seconds: number; peak_vram_mib: number; created_at: number; shared?: boolean; load_seconds?: number; encoding_seconds?: number; inference_seconds?: number; image_url?: string; metadata_url?: string; demo_title?: string; favorite?: boolean; featured?: boolean; title?: string; notes?: string; trashed_at?: number|null; reviewed_sfw?: boolean; applied_settings?: Record<string,unknown> };
+export type Job = { id: string; status: string; completed_steps: number; steps: number; error?: string; result?: ImageResult; results?: ImageResult[]; elapsed_seconds?: number; completed_images?:number; total_images?:number };

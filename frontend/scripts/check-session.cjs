@@ -13,7 +13,7 @@ function runtime(hostname){return load(fs.readFileSync(path.join(root,'runtime.t
  assert.equal(runtime('localhost.attacker.invalid').IS_LOCAL_STUDIO,false);
  const source=fs.readFileSync(path.join(root,'session.ts'),'utf8');
  const localStorage=storage(),sessionStorage=storage();
- const publicSession=load(source,{exports:{},require:()=>publicRuntime,localStorage,sessionStorage,crypto:{randomUUID:()=>String(Math.random())},fetch:()=>{throw Error('A public guest must not call the local backend');}});
+ const publicSession=load(source,{exports:{},require:()=>publicRuntime,localStorage,sessionStorage,crypto:{randomUUID:()=>String(Math.random())},fetch:async(url)=>{assert.ok(['/api/account','/api/account/logout'].includes(url));return {ok:true,json:async()=>({user:{id:1,name:'Test',email:'test@example.invalid'}})};}});
  assert.equal(await publicSession.syncSession(),false);
  await publicSession.continueAsGuest();assert.equal(publicSession.isGuest(),true);assert.equal(await publicSession.syncSession(),true);
  await publicSession.endSession();assert.equal(await publicSession.syncSession(),false);

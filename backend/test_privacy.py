@@ -10,6 +10,50 @@ import privacy
 import main
 
 class PrivacyTests(unittest.TestCase):
+    def test_account_email_change_preserves_gallery_identity(self):
+        first=Mock(status_code=200);first.json.return_value={'user':{'id':123,'name':'Test','email':'old@example.invalid'}}
+        second=Mock(status_code=200);second.json.return_value={'user':{'id':123,'name':'Test','email':'new@example.invalid','avatar':'moon'}}
+        with patch('requests.post',return_value=first):
+            self.assertEqual(self.a.post('/api/auth/login',json={'email':'old@example.invalid','password':'test-only'}).status_code,200)
+        owner=privacy.account_id('old@example.invalid');self.fixture(owner)
+        self.a.post('/api/auth/logout')
+        with patch('requests.post',return_value=second):
+            self.assertEqual(self.a.post('/api/auth/login',json={'email':'new@example.invalid','password':'test-only'}).status_code,200)
+        self.assertEqual(len(self.a.get('/api/gallery').json()),1)
+        self.assertEqual(self.a.get('/api/profile').json()['avatar'],'moon')
+    def test_gallery_edits_trash_restore_and_isolation(self):
+        self.fixture(self.owners[0])
+        self.assertEqual(self.b.post('/api/images/fixture/manage',json={'favorite':True}).status_code,404)
+        changed=self.a.post('/api/images/fixture/manage',json={'favorite':True,'featured':True,'title':'Mi favorita','notes':'Notas'}).json()
+        self.assertTrue(changed['favorite']);self.assertTrue(changed['featured']);self.assertEqual(changed['title'],'Mi favorita')
+        self.assertEqual(self.a.post('/api/images/fixture/manage',json={'action':'trash'}).status_code,200)
+        self.assertEqual(self.a.get('/api/gallery').json(),[])
+        self.assertEqual(len(self.a.get('/api/gallery?trashed=true').json()),1)
+        self.assertEqual(self.a.get('/api/profile').json()['total'],0)
+        self.assertEqual(self.a.get('/api/images/fixture/file').status_code,200)
+        self.assertEqual(self.b.get('/api/images/fixture/file').status_code,404)
+        self.assertEqual(self.a.post('/api/images/fixture/manage',json={'notes':'changed'}).status_code,409)
+        self.assertEqual(self.a.post('/api/images/fixture/manage',json={'action':'restore'}).status_code,200)
+        self.assertTrue(self.a.get('/api/gallery').json()[0]['favorite'])
+    def test_trash_revokes_public_links_and_quota_limits_restore(self):
+        owner=self.account(self.a);self.fixture(owner)
+        self.a.post('/api/images/fixture/visibility',json={'shared':True,'reviewed_sfw':True})
+        self.a.post('/api/images/fixture/manage',json={'action':'trash'})
+        self.assertEqual(self.public.get('/api/images/fixture/file').status_code,401)
+        self.assertEqual(self.public.get('/api/public/gallery').json(),[])
+        self.fixture(owner,image_id='second')
+        with patch.dict('os.environ',{'MYSTIKAL_GALLERY_LIMIT':'1'}):
+            self.assertEqual(self.a.post('/api/images/fixture/manage',json={'action':'restore'}).status_code,409)
+            self.assertEqual(self.a.post('/api/generate',json={'prompt':'test'}).status_code,409)
+        self.assertEqual(self.a.post('/api/images/fixture/manage',json={'action':'restore'}).status_code,200)
+        self.assertFalse(self.a.get('/api/gallery').json()[1]['shared'])
+    def test_guest_profile_and_generation_guards(self):
+        response=self.a.post('/api/profile/details',json={'name':'Creador','avatar':'moon'})
+        self.assertEqual(response.status_code,200);self.assertEqual(response.json()['avatar'],'moon')
+        self.assertEqual(self.a.post('/api/profile/details',json={'name':'  '}).status_code,422)
+        self.assertEqual(self.a.post('/api/profile/details',json={'name':'Creador','avatar':'invalid'}).status_code,422)
+        for data in [{'nsfw':True},{'engine':'flux'},{'count':5},{'engine':'flux','paid_confirmed':True,'nsfw':True,'adult_confirmed':True}]:
+            self.assertEqual(self.a.post('/api/generate',json={'prompt':'test',**data}).status_code,422)
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
         privacy.DB=Path(self.temp.name)/'test.sqlite3'
@@ -100,7 +144,7 @@ class PrivacyTests(unittest.TestCase):
         self.assertEqual(result.status_code,502)
         self.assertEqual(self.public.get('/api/auth/session').status_code,401)
     def test_manual_rating_and_artist_are_preserved(self):
-        request=main.Generation(prompt='solo',artist='freng',nsfw=True)
+        request=main.Generation(prompt='solo',artist='freng',nsfw=True,adult_confirmed=True)
         self.assertTrue(request.model_dump()['nsfw'])
         self.assertEqual(request.artist,'freng')
         self.assertIn('freng',self.public.get('/api/artists?q=fre').json()['names'])

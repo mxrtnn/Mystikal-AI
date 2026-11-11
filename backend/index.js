@@ -41,6 +41,8 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
+app.use(require('./accounts')(db.promise()));
+
 // Verificación de conexión
 db.getConnection((err, connection) => {
   if (err) {

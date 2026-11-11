@@ -107,7 +107,7 @@ Verificado en navegador: redirección del generador al login sin sesión, acceso
 
 IMPORTANTE: reinicia Python para activar estos cambios. Hasta detener el backend anterior, ese proceso sigue ejecutando sus rutas antiguas. La interfaz nueva deja de usar la galería antigua para el home inmediatamente.
 
-- Selector manual SFW/NSFW ANTES de generar. No hay detector ni inferencia automática de categoría. La marca no cambia el prompt ni la generación.
+- Selector manual SFW/NSFW ANTES de generar, dentro del modal Ajustes avanzados, con declaración de mayoría de edad. No hay detector ni inferencia automática de categoría. La marca no cambia el prompt ni la generación.
 - Nuevos archivos en backend/data/private/<propietario-servidor>/sfw o nsfw. No hay montaje estático de esa carpeta ni de backend/outputs.
 - SQLite guarda propietarios, preferencias y sesiones. Tokens aleatorios de 256 bits en cookie HttpOnly/SameSite Strict; solo su hash se almacena en disco. La API comprueba sesión y propietario en galería, archivos privados, metadatos, tareas y cambios de publicación. No usa el email de localStorage como prueba de identidad.
 - El login local verifica las credenciales en el servicio de cuentas HTTPS preexistente. No guarda contraseñas. MYSTIKAL_AUTH_URL permite configurar ese origen; por defecto conserva el Render usado por el formulario original. El registro sigue en el servicio previo. Una nueva sesión de cuenta necesita Internet; una sesión válida y la generación ya instalada pueden seguir usándose sin conexión. Invitado es local y temporal (12 horas); al salir se revoca el acceso a sus imágenes. Descarga lo que quieras conservar antes de salir.
@@ -128,7 +128,7 @@ El script pide el correo en tu propia terminal, lo usa solo localmente y copia l
 
 Fuente: https://tags.gallery/en/v4-5. Es un catálogo externo de etiquetas y ejemplos generados, no una API oficial de NovelAI que entrene modelos. No se encontró una API pública documentada y el acceso programático al sitio respondió 403; no se eludió el bloqueo ni se copió el catálogo completo.
 
-El generador incluye un campo de artista y autocompletado inicial de seis nombres mediante /api/artists?q=. Puedes escribir cualquier etiqueta copiada manualmente del catálogo. Se antepone al prompt efectivo y cuenta para el límite CLIP; se guarda y recupera con la imagen. El soporte en Animagine XL 4.0 no está validado por pertenecer al catálogo, y la sintaxis de pesos NovelAI no es compatible. No se descargaron imágenes ni modelos de artistas.
+El modal de ajustes incluye un campo de artista y un enlace al catálogo. /api/artists?q= conserva su lista inicial de seis nombres, sin afirmar integración en vivo. Puedes escribir cualquier etiqueta copiada manualmente del catálogo. Se antepone al prompt efectivo y cuenta para el límite CLIP; se guarda y recupera con la imagen. El soporte en Animagine XL 4.0 no está validado por pertenecer al catálogo, y la sintaxis de pesos NovelAI no es compatible. No se descargaron imágenes ni modelos de artistas.
 
 Pruebas de privacidad reproducibles (no usan credenciales reales ni generan imágenes):
 
@@ -150,8 +150,8 @@ El login y el modo invitado se mantienen en la versión pública; la GPU y los a
 - Base de datos original: TiDB Cloud, protocolo MySQL. La configuración existente está en backend/.env (no versionado); no se copiaron credenciales a documentación ni al frontend. Variables DB_HOST, DB_PORT, DB_USER, DB_PASSWORD y DB_NAME pertenecen al servicio backend de Render, no a variables VITE_* ni al cliente de Vercel.
 - Backend original activo: https://mystikal-ai.onrender.com. El dominio mystikal-ai-backend.onrender.com devolvió 404 y se eliminó como fallback. También se corrigió el origen por defecto del puente de autenticación local Python.
 - En Vercel, /login muestra el formulario original y llama a /api/login. frontend/vercel.json reenvía esa ruta a https://mystikal-ai.onrender.com/api/login. /api/register se reenvía al registro del mismo servicio. Root Directory de Vercel debe ser frontend para cargar este vercel.json. No hace falta copiar las credenciales de TiDB a Vercel.
-- Invitado público funciona en el navegador sin llamar a /api/auth/guest ni necesitar Python. Iniciar sesión, cerrar sesión y /profile públicos conservan el flujo de navegación. El perfil web muestra la cuenta; no carga archivos privados del PC. El estado público guardado en el navegador solo controla la navegación pública: no es un token de autorización para APIs ni archivos privados.
-- /generate e /images públicos requieren cuenta o invitado y abren la demo SFW; /demo permite explorarla directamente sin cuenta. La generación nueva sigue exclusivamente en la GPU local. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
+- Invitado público funciona en el navegador sin llamar a /api/auth/guest ni necesitar Python. Iniciar sesión, cerrar sesión y /profile públicos conservan el flujo de navegación. El perfil web permite editar la cuenta y organizar una colección de ejemplos del navegador; no carga archivos privados del PC. El estado público guardado en el navegador solo controla la navegación pública: no es un token de autorización para APIs ni archivos privados.
+- /generate e /images públicos requieren cuenta o invitado y abren la demo SFW; /demo permite explorarla directamente sin cuenta. El estudio local permite generación nueva con la GPU o, por elección explícita, FLUX en Replicate. La demo pública no llama a ninguno. La sesión de Vercel no se traslada al PC; en el estudio local se mantienen las cookies HttpOnly y comprobaciones de propietario del backend Python.
 - Registro local utiliza VITE_AUTH_API_URL si se configura, con https://mystikal-ai.onrender.com como valor por defecto. El backend Python usa MYSTIKAL_AUTH_URL con el mismo valor por defecto. Las variables VITE_API_URL antiguas no se usan para sustituir las rutas de login públicas.
 
 Validado: conexión local de solo lectura a TiDB con TLS y certificado verificado (SELECT 1), servicio original Render activo, validación de login sin campos (400) y consulta con una identidad de diagnóstico inexistente (401, sin crear cuentas ni usar credenciales del usuario). No se ha probado un login válido del usuario ni se ha publicado automáticamente la corrección.
@@ -162,3 +162,40 @@ Prueba de comportamiento de sesiones:
 cd frontend
 node scripts/check-session.cjs
 ```
+
+
+## Ajustes avanzados, modelos y perfil
+
+El botón Ajustes avanzados abre un dialog modal con selección de Animagine XL 4.0 / FLUX 1.1 Pro, estilo (original, anime, retro, realista, 3D o 2D), resolución, seed, artista y lotes de 1–4 imágenes. Los estilos añaden texto al prompt: no entrenan ni cambian los pesos del modelo. Los lotes son secuenciales; la seed fija aumenta por imagen. Cancelar conserva las fotos ya terminadas.
+
+Animagine mantiene pasos, guidance, sampler y negative prompt. El switch de contenido adulto está apagado por defecto y requiere declarar mayoría de edad; es clasificación manual, no detector, verificación de edad ni filtro del modelo. Reutilizar una imagen no reactiva el switch. FLUX mantiene los controles de seguridad del proveedor y no habilita ese modo.
+
+Para FLUX, el backend Python lee REPLICATE_API_TOKEN del entorno o del backend/.env existente. Nunca lo envía al frontend. La solicitud requiere paid_confirmed=true y cobra según el proveedor, por imagen; cancelar una predicción ya iniciada puede consumir saldo. No envía negative prompt, pasos, guidance ni sampler, porque esta API no los admite. La interfaz los desactiva y los metadatos applied_settings registran null para esos controles. El navegador público demo no realiza inferencia, aunque permite explorar el selector de modelos.
+
+El perfil local permite cambiar nombre/icono y, para cuentas, correo mediante el servicio original (requiere contraseña actual). El ID remoto estable conserva la propiedad del historial después de cambiar el correo. Los invitados solo cambian nombre/icono de su sesión. La galería admite favoritas, destacadas, título, notas, papelera y restauración. Editar no altera el prompt original. Favoritas/destacadas no publican imágenes. Mover a papelera revoca la publicación; restaurar mantiene la imagen privada.
+
+El contador limita a 1000 fotos ACTIVAS por propietario, configurable mediante MYSTIKAL_GALLERY_LIMIT. Se comprueba tanto al iniciar un lote como al guardar/restaurar cada imagen. La papelera conserva archivos y no cuenta para esa cuota: no representa un límite de espacio en disco ni un borrado definitivo.
+
+La colección demo se guarda en localStorage, separada por ID de cuenta o sesión invitada. Solo contiene ejemplos que el usuario decide guardar, no los presenta como generaciones propias. No se sincroniza entre navegadores y puede perderse al borrar sus datos.
+
+### Publicación necesaria
+
+1. Publicar el backend Node en Render con backend/accounts.js y backend/index.js actualizados. La cuenta de base de datos necesita CREATE TABLE: se crean de forma aditiva mystikal_web_sessions y mystikal_profiles al primer acceso. No se modifica ni borra la tabla users existente. Conserva sus credenciales de autenticación anteriores.
+2. Publicar el frontend en Vercel con Root Directory frontend. Los rewrites /api/account y /api/account/:path* deben llegar al mismo Render que /api/login. La sesión de cuenta ahora se verifica en servidor con cookie HttpOnly y expira; usuarios que tenían solo el estado antiguo del navegador deben volver a iniciar sesión.
+3. Reiniciar el backend Python local y Vite para usar los nuevos endpoints y la migración aditiva SQLite. No borrar backend/data ni sus fotos.
+
+El origen público permitido por defecto es https://mystikal-ai.vercel.app. ACCOUNT_ORIGINS en Render admite otros orígenes exactos separados por coma, si se usa otro dominio. Las cookies de cuenta son Secure en Render/producción y no llevan Domain, para funcionar mediante el proxy de Vercel. Editar una cuenta necesita el despliegue de Render; publicar solo el frontend no es suficiente.
+
+### Verificación de esta actualización
+
+```powershell
+backend\.venv-local\Scripts\python.exe -m unittest discover -s backend -p 'test*.py' -v
+node --test backend/accounts.test.cjs
+cd frontend
+node scripts/check-session.cjs
+node scripts/check-demo.cjs
+node scripts/check-demo-render.mjs
+npm run build
+```
+
+Las pruebas usan bases de datos temporales, cuentas simuladas y adaptadores de generación simulados. Comprueban aislamiento, papelera, cuota, identidad tras cambio de correo, lotes, cancelación y payload FLUX. No consumen saldo de Replicate, no modifican cuentas reales ni prueban la calidad de una inferencia nueva. La vista previa automatizada del navegador no pudo conectar a localhost en esta sesión; se verificó el renderizado React y la compilación, sin afirmar inspección visual completa.

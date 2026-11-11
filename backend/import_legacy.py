@@ -31,7 +31,7 @@ def main():
                 image.save(privacy.output_path(owner,True,image_id,'.png'),pnginfo=info)
             privacy.output_path(owner,True,image_id,'.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
             with privacy.connect() as db:
-                db.execute('INSERT INTO images VALUES (?,?,?,?,?,?)',(image_id,owner,1,0,0,json.dumps(data,ensure_ascii=False)))
+                db.execute('INSERT INTO images(id,owner,nsfw,shared,reviewed_sfw,metadata) VALUES (?,?,?,?,?,?)',(image_id,owner,1,0,0,json.dumps(data,ensure_ascii=False)))
             count+=1
         except (ValueError,KeyError,OSError):
             continue
